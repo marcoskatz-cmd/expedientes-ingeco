@@ -108,3 +108,19 @@ table.tabla td.obra small { color: var(--gris); display: block; }
 .acciones button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--teal); background: #fff; color: var(--teal); cursor: pointer; }
 .acciones button:disabled { opacity: .5; cursor: wait; }
 #btn-bot { border-color: var(--borde); color: var(--gris); }
+
+/* Oficinas desplegables en el tablero */
+.of { border-bottom: 1px solid var(--borde); }
+.of:last-child { border-bottom: none; }
+.of-cab { display: grid; grid-template-columns: 14px minmax(110px, 1fr) 2fr auto; gap: 8px; align-items: center; padding: 8px 0; font-size: 13px; cursor: pointer; }
+.of-cab .nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.of-cab .flecha { color: var(--gris); transition: transform .15s; display: inline-block; }
+.of-cab.abierto .flecha { transform: rotate(90deg); }
+.of-cab b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.of-det { list-style: none; margin: 0 0 8px 14px; padding: 0 0 0 8px; border-left: 2px solid var(--borde); }
+.of-det li { display: grid; grid-template-columns: minmax(0, 1fr) auto max-content; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; cursor: pointer; border-bottom: 1px dashed var(--borde); }
+.of-det li:last-child { border-bottom: none; }
+.of-det li .nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.of-det li .nom small { display: block; color: var(--gris); }
+.of-det li b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) { .of-cab { grid-template-columns: 14px 1fr auto; } .of-cab .barra { display: none; } }
