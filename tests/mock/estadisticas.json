@@ -1,0 +1,1 @@
+{"ok":true,"total":{"casos":12,"mediana":48,"p25":30,"p75":70},"oficinas":[{"nombre_canonico":"FISCALIA MUNICIPAL","mediana_dias":22,"casos":9},{"nombre_canonico":"SECRETARIA DE OBRAS","mediana_dias":8,"casos":14},{"nombre_canonico":"TESORERIA GENERAL","mediana_dias":4,"casos":11}]}

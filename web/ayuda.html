@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayuda · Expedientes INGECO</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header><h1>Cómo se usa</h1></header>
+<main class="ayuda">
+<p><a class="volver" href="./">← Volver</a></p>
+
+<h3>Qué hace este sistema</h3>
+<p>Todos los días hábiles, de 9 a 17, una vez por hora, consulta el portal del Municipio por cada expediente de cobro de INGECO y anota en qué oficina está. Cuando un expediente cambia de oficina, queda registrado el pase con la fecha. Con esa historia calcula cuánto suele tardar cada oficina y estima cuántos días faltan para que llegue a Tesorería.</p>
+
+<h3>Las pantallas</h3>
+<ul>
+<li><b>Tablero</b>: cuánta plata hay a cobrar, cuántos expedientes están quietos y qué se estima cobrar en los próximos 30 días. Abajo, el monto repartido por etapa y por oficina.</li>
+<li><b>Lista</b>: todos los expedientes, ordenados por los que llevan más días sin moverse. Tocá uno para ver su ficha.</li>
+<li><b>Ficha</b>: el recorrido completo del expediente, la proyección de cobro y las gestiones que hicimos (llamados, visitas, notas). Para agregar una gestión hay que haber entrado desde la app INGECO.</li>
+<li><b>Estadísticas</b>: cuántos días hábiles tarda cada oficina (mediana) y cuánto tarda un expediente de punta a punta.</li>
+</ul>
+
+<h3>Los colores</h3>
+<ul>
+<li><span class="chip" style="background:#0f766e">teal</span> el expediente se movió hace poco.</li>
+<li><span class="chip" style="background:#b45309">ámbar</span> lleva más días quietos que el umbral (10 días hábiles por defecto). Conviene hacer una gestión.</li>
+<li><span class="chip" style="background:#6b7280">gris</span> sin dato: el portal no lo encontró o la consulta falló. El motivo aparece en la lista.</li>
+</ul>
+
+<h3>Cómo se calcula la proyección</h3>
+<p>Cada tipo de contrato tiene una ruta esperada de oficinas. Para el expediente se ubica la oficina actual en esa ruta y se suman los días que suele tardar cada oficina que falta, usando la mediana de los expedientes anteriores. Si una oficina tiene menos de 5 casos registrados se usa un valor por defecto y la estimación se marca como <b>débil</b>. A medida que el sistema junta historia, la estimación mejora sola.</p>
+<p>Si un expediente aparece como <b>Fuera de ruta</b>, está en una oficina que no figura en la ruta de su tipo de contrato. No tiene proyección hasta que vuelva a una oficina conocida o se agregue esa oficina a la ruta.</p>
+
+<h3>Si aparece un cartel ámbar arriba</h3>
+<p>Es un error de la última corrida. El más común: alguien cambió el nombre de una columna en la planilla OBRAS INGECO. El cartel dice qué columna falta; hay que volver a ponerle el nombre original y el bot sigue solo en la próxima hora.</p>
+
+<h3>Las alertas</h3>
+<p>Cuando un expediente supera el umbral de días quietos llega un mail y un aviso en la app INGECO, una sola vez por tramo. Si el expediente se mueve y vuelve a quedarse, avisa de nuevo.</p>
+</main>
+</body>
+</html>

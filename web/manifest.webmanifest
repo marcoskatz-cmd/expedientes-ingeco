@@ -1,0 +1,10 @@
+{
+  "name": "Expedientes INGECO",
+  "short_name": "Expedientes",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#0f766e",
+  "lang": "es",
+  "icons": [{ "src": "icono.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
