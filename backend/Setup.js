@@ -46,7 +46,7 @@ var RUTA_COBRO_ = [
   ['SECRETARIA DE GOBIERNO', 'Media', 2],
   ['FISCALIA MUNICIPAL', 'Media', 5],
   ['CONTADURIA GENERAL', 'Final', 2],
-  ['TESORERIA GENERAL', 'Cobro', 9]
+  ['TESORERIA GENERAL', 'Cobro', 1]   // provisorio: según Marcos suele ser 1 día hábil; se mide desde ahora al cobrarse
 ];
 // Variantes de nombre que aparecen en planillas viejas → nombre del municipio.
 var OFICINAS_ALIAS_ = { 'SECRETARIA DE OBRAS': 'SECRETARIA DE OBRAS PUBLICAS', 'DIRECCION DE OBRAS': 'DIRECCION DE OBRAS VIALES', 'TESORERIA': 'TESORERIA GENERAL', 'CONTADURIA': 'CONTADURIA GENERAL', 'FISCALIA': 'FISCALIA MUNICIPAL' };
@@ -67,6 +67,11 @@ function accionSetupExtra2_(accion, p) {
     Object.keys(OFICINAS_ALIAS_).forEach(function (k) { if (!tiene[k]) of.push({ nombre_api: k, nombre_canonico: OFICINAS_ALIAS_[k], mediana_dias: '', casos: '' }); });
     reemplazarHoja_(ssD, 'OFICINAS', of);
     return { ok: true, rutas: RUTA_COBRO_.length, oficinas: of.length };
+  }
+  if (accion === 'setup_tesoreria_default') {
+    var h = ssD.getSheetByName('RUTAS'), v = h.getDataRange().getValues(), cambiadas = 0;
+    v.forEach(function (r, i) { if (i && /TESORERIA/.test(normOficina(r[2]))) { h.getRange(i + 1, 5).setValue(Number(p.dias) || 1); cambiadas++; } });
+    return { ok: true, cambiadas: cambiadas };
   }
   if (accion === 'setup_reset_alertas') {
     var est = leerHoja_(ssD, 'ESTADO_ACTUAL').filter(function (e) { return String(e.expediente || '').trim(); });

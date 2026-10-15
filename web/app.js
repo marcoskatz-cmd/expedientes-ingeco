@@ -191,7 +191,8 @@ async function renderStats() {
   $('#vista').innerHTML = '<p class="vacio">Cargando…</p>';
   let s;
   try { s = await api('estadisticas'); } catch (e) { $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; return; }
-  const ofs = s.oficinas.filter(o => Number(o.casos)).sort((a, b) => Number(b.mediana_dias) - Number(a.mediana_dias));
+  const porCanon = {}; s.oficinas.forEach(o => { const k = normOf(o.nombre_canonico); if (!porCanon[k] || Number(o.casos) > Number(porCanon[k].casos)) porCanon[k] = o; });
+  const ofs = Object.values(porCanon).filter(o => Number(o.casos)).sort((a, b) => Number(b.mediana_dias) - Number(a.mediana_dias));
   const firmes = ofs.filter(o => Number(o.casos) >= (s.min_casos || 5));
   const prov = o => Number(o.casos) < (s.min_casos || 5);
   const max = Math.max(1, ...ofs.map(o => Number(o.mediana_dias)));
@@ -204,16 +205,19 @@ async function renderStats() {
   const ruta = (s.rutas || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
   const pasos = ruta.map(r => { const key = normOf(r.oficina), st = statsOf[key]; const ok = st && Number(st.casos) >= (s.min_casos || 5); return { oficina: bonitoOf(r.oficina), key, etapa: r.etapa, dias: ok ? Number(st.mediana_dias) : Number(r.dias_default) || 0, casos: st ? Number(st.casos) : 0, debil: !ok }; });
   const totalTipo = pasos.reduce((a, p) => a + p.dias, 0);
+  const sinTeso = pasos.filter(p => p.etapa !== 'Cobro').reduce((a, p) => a + p.dias, 0);
+  const tesoProv = pasos.some(p => p.etapa === 'Cobro' && p.debil);
   let acumD = 0;
   const lineaHtml = pasos.length ? `
     <div class="linea">${pasos.map(p => `<div class="seg ${esc(p.etapa)}${p.debil ? ' debil' : ''}" style="flex:${Math.max(p.dias, 0.6)}" title="${esc(p.oficina)}: ${n(p.dias)} días hábiles${p.debil ? ' (provisorio)' : ''}">${p.dias >= 2 ? (p.debil ? '"' + n(p.dias) + ' d"' : n(p.dias) + ' d') : ''}</div>`).join('')}</div>
     <div class="leyenda"><span><i style="background:#5eead4"></i>Preliminar</span><span><i style="background:#2dd4bf"></i>Media</span><span><i style="background:var(--teal)"></i>Final</span><span><i style="background:#115e59"></i>Cobro</span><span><i style="background:#999;background-image:repeating-linear-gradient(45deg,transparent 0 3px,#fff 3px 5px)"></i>rayado y "entre comillas": dato provisorio, menos de ${n(s.min_casos || 5)} casos</span></div>
     <ul class="pasos">${pasos.map((p, i) => { acumD += p.dias; return `<li><span class="n">${i + 1}.</span><span>${esc(p.oficina)} <small class="n">${esc(p.etapa)} · ${casosTxt(p.key, p.casos)}</small></span><span class="d">${p.debil ? '<b>"' + n(p.dias) + '"</b> d' : '<b>' + n(p.dias) + '</b> d'}</span><span class="acum">día ${n(acumD)}</span></li>`; }).join('')}</ul>
-    <p><small>De punta a punta, un expediente tipo tarda <b>${n(totalTipo)} días hábiles</b> (unas ${n(Math.round(totalTipo / 5))} semanas). Se puede editar la ruta en la hoja RUTAS de la planilla de datos.</small></p>
+    <p><small>Hasta llegar a Tesorería, un expediente tipo tarda <b>${n(sinTeso)} días hábiles</b> (unas ${n(Math.round(sinTeso / 5))} semanas); hasta cobrarse, ${tesoProv ? '"' + n(totalTipo) + '"' : n(totalTipo)}. Se puede editar la ruta en la hoja RUTAS de la planilla de datos.</small></p>
     ${pasos.some(p => p.etapa === 'Cobro' && p.debil) ? '<p><small><b>Tesorería va "entre comillas"</b>: por Tesorería pasaron ' + n(lleg['TESORERIA GENERAL'] || 0) + ' expedientes, pero la planilla casi nunca registró la fecha en que salieron (se cobraron), así que la duración solo se pudo medir en ' + n((statsOf['TESORERIA GENERAL'] || {}).casos || 0) + '. El bot la mide desde ahora cada vez que un expediente se marca como cobrado en OBRAS INGECO; cuando junte ' + n(s.min_casos || 5) + ' casos el dato pasa a ser firme.</small></p>' : ''}` : '<p class="vacio">No hay ruta cargada.</p>';
   $('#vista').innerHTML = `
     <section class="tiles">
-      <div class="tile"><small>Expediente tipo (ruta)</small><b>${n(totalTipo)} días hábiles</b><span>sumando la mediana de cada oficina</span></div>
+      <div class="tile"><small>Expediente tipo hasta llegar a Tesorería</small><b>${n(sinTeso)} días hábiles</b><span>sumando la mediana de cada oficina</span></div>
+      <div class="tile"><small>Expediente tipo hasta cobrar</small><b>${tesoProv ? '"' + n(totalTipo) + '"' : n(totalTipo)} días hábiles</b><span>${tesoProv ? 'Tesorería provisoria: ' + n(totalTipo - sinTeso) + ' d entre comillas' : 'incluye Tesorería'}</span></div>
       <div class="tile"><small>Inicio → Tesorería (real, mediana)</small><b>${n(s.total.mediana)} días hábiles</b><span>${n(s.total.casos)} expedientes completos · p25 ${n(s.total.p25)} · p75 ${n(s.total.p75)}</span></div>
       <div class="tile"><small>Oficina más lenta (con datos firmes)</small><b>${firmes[0] ? esc(bonitoOf(firmes[0].nombre_canonico)) : '—'}</b><span>${firmes[0] ? n(firmes[0].mediana_dias) + ' días de mediana · ' + n(firmes[0].casos) + ' casos' : ''}</span></div>
       <div class="tile"><small>Expedientes activos</small><b>${act.length}</b><span>en ${Object.keys(porOf).length} oficinas</span></div>
