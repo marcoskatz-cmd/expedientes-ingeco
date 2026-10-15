@@ -31,6 +31,19 @@ function medianasPorOficina(movimientos, mapaCanon) {
   return out;
 }
 
+// Cuántos expedientes distintos pasaron por cada oficina (aunque no tengan salida registrada).
+function llegadasPorOficina(movimientos, mapaCanon) {
+  var set = {};
+  movimientos.forEach(function (m) {
+    var of = canonizar(m.oficina, mapaCanon);
+    if (!of || of === 'COBRADO') return;
+    (set[of] = set[of] || {})[m.expediente] = true;
+  });
+  var out = {};
+  Object.keys(set).forEach(function (of) { out[of] = Object.keys(set[of]).length; });
+  return out;
+}
+
 var RUTA_FALLBACK_ = 'Contratación Directa';
 
 function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
@@ -63,5 +76,5 @@ function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
 
 if (typeof module !== 'undefined') {
   var P_ = require('./Parse.js'); normOficina = P_.normOficina; parseFecha = P_.parseFecha; fmtFecha = P_.fmtFecha; sumarDiasHabiles = P_.sumarDiasHabiles;
-  module.exports = { mediana, canonizar, medianasPorOficina, proyectar };
+  module.exports = { mediana, canonizar, medianasPorOficina, llegadasPorOficina, proyectar };
 }

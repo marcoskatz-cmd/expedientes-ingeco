@@ -84,3 +84,14 @@ test('proyectar usa la ruta general (*) sin marcar débil cuando el tipo no tien
   assert.strictEqual(r.dias_restantes_est, 1 + 9);
   assert.strictEqual(r.etapa, 'Final');
 });
+test('llegadasPorOficina cuenta expedientes distintos que pasaron por cada oficina', () => {
+  const movs = [
+    { expediente: '1/2026', fecha_pase: '01/09/2026', oficina: 'Contaduría' },
+    { expediente: '1/2026', fecha_pase: '10/09/2026', oficina: 'Tesorería General' },
+    { expediente: '1/2026', fecha_pase: '12/09/2026', oficina: 'TESORERIA GENERAL' },
+    { expediente: '2/2026', fecha_pase: '05/09/2026', oficina: 'Tesorería General' },
+    { expediente: '3/2026', fecha_pase: '05/09/2026', oficina: 'Contaduría' }
+  ];
+  const r = Pr.llegadasPorOficina(movs, {});
+  assert.deepStrictEqual(r, { 'CONTADURIA': 2, 'TESORERIA GENERAL': 2 });
+});

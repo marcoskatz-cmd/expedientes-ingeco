@@ -67,7 +67,7 @@ function accionEstadisticas_() {
   });
   totales.sort(function (a, b) { return a - b; });
   var q = function (p) { return totales.length ? totales[Math.min(totales.length - 1, Math.floor(p * totales.length))] : 0; };
-  return { ok: true, oficinas: oficinas, rutas: leerHoja_(ssD, 'RUTAS'), min_casos: CFG.MIN_CASOS_MEDIANA, total: { casos: totales.length, mediana: mediana(totales), p25: q(0.25), p75: q(0.75) } };
+  return { ok: true, oficinas: oficinas, llegadas: llegadasPorOficina(movs, mapaCanon_(ssD)), rutas: leerHoja_(ssD, 'RUTAS'), min_casos: CFG.MIN_CASOS_MEDIANA, total: { casos: totales.length, mediana: mediana(totales), p25: q(0.25), p75: q(0.75) } };
 }
 
 function accionGestion_(p, u) {

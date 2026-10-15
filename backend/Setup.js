@@ -6,7 +6,7 @@ var BOOTSTRAP_SECRET_ = ''; // solo para el primer arranque; después el secreto
 function accionSetup_(accion, p) {
   var sec = setupSecret_();
   if (!sec || p.secreto !== sec) return { ok: false, error: 'Setup deshabilitado' };
-  var extra = accionSetupExtra_(accion, p) || accionSetupExtra2_(accion, p) || accionSetupMaestro_(accion, p) || accionSetupFormulas_(accion, p) || accionSetupArreglarMontos_(accion, p); if (extra) return extra;
+  var extra = accionSetupExtra_(accion, p) || accionSetupExtra2_(accion, p) || accionSetupMaestro_(accion, p) || accionSetupFormulas_(accion, p) || accionSetupArreglarMontos_(accion, p) || accionSetupCobradas_(accion, p); if (extra) return extra;
   var ssD = ssDatos_();
   if (accion === 'setup_importar') {
     var out = {};
@@ -111,4 +111,14 @@ function accionSetupArreglarMontos_(accion, p) {
   var det = ssMaestro_().getSheetByName('Detalle Municipio');
   SpreadsheetApp.flush();
   return { ok: true, cambios: cambios, detalle_C4: det ? det.getRange('C4').getDisplayValue() : null };
+}
+
+function accionSetupCobradas_(accion, p) {
+  if (accion !== 'setup_cobradas') return null;
+  var raw = leerHojaRaw_(ssMaestro_(), CFG.HOJA_MAESTRO), enc = raw.encabezados;
+  var ix = function (n) { return enc.indexOf(n); };
+  var filas = raw.hoja.getRange(2, 1, raw.hoja.getLastRow() - 1, enc.length).getDisplayValues();
+  var out = filas.map(function (r, i) { return [i + 2, r[ix('Expediente')], r[ix('Estado $')], r[ix('Oficina')], r[ix('Ultimo Movimiento')], r[ix('Fecha de facturacion')], r[ix('Fecha de ejecución')]]; })
+    .filter(function (r) { return /cobrad/i.test(r[2]) && /tesor/i.test(r[3]); });
+  return { ok: true, encabezados: enc, filas: out };
 }
