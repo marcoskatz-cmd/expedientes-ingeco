@@ -1,0 +1,65 @@
+// Estadística por oficina y proyección de días restantes. Puro: se testea con node.
+
+function mediana(nums) {
+  var a = nums.filter(function (n) { return typeof n === 'number' && !isNaN(n); }).sort(function (x, y) { return x - y; });
+  if (!a.length) return 0;
+  var m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+function canonizar(oficina, mapaCanon) {
+  var n = normOficina(oficina);
+  return (mapaCanon && mapaCanon[n]) || n;
+}
+
+// Cada movimiento con dias_en_oficina_anterior aporta ese valor a la oficina del movimiento previo del mismo expediente.
+function medianasPorOficina(movimientos, mapaCanon) {
+  var porExp = {};
+  movimientos.forEach(function (m) { (porExp[m.expediente] = porExp[m.expediente] || []).push(m); });
+  var acum = {};
+  Object.keys(porExp).forEach(function (k) {
+    var lista = porExp[k].slice().sort(function (a, b) { return parseFecha(a.fecha_pase) - parseFecha(b.fecha_pase); });
+    for (var i = 1; i < lista.length; i++) {
+      var d = Number(lista[i].dias_en_oficina_anterior);
+      if (lista[i].dias_en_oficina_anterior === '' || isNaN(d)) continue;
+      var of = canonizar(lista[i - 1].oficina, mapaCanon);
+      (acum[of] = acum[of] || []).push(d);
+    }
+  });
+  var out = {};
+  Object.keys(acum).forEach(function (of) { out[of] = { mediana_dias: mediana(acum[of]), casos: acum[of].length }; });
+  return out;
+}
+
+var RUTA_FALLBACK_ = 'Contratación Directa';
+
+function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
+  var tipo = String(estado.tipo_contrato || '').trim();
+  var ruta = rutas.filter(function (r) { return r.tipo_contrato === tipo; });
+  var calidad = 'buena';
+  if (!ruta.length) { ruta = rutas.filter(function (r) { return r.tipo_contrato === RUTA_FALLBACK_; }); calidad = 'debil'; }
+  ruta = ruta.slice().sort(function (a, b) { return Number(a.orden) - Number(b.orden); });
+  var actual = canonizar(estado.oficina_actual, mapaCanon);
+  var idx = -1;
+  ruta.forEach(function (r, i) { if (idx < 0 && normOficina(r.oficina) === actual) idx = i; });
+  if (idx < 0) return { etapa: 'Fuera de ruta', paso_en_ruta: '', dias_restantes_est: '', fecha_cobro_est: '', calidad_estimacion: 'debil' };
+
+  function diasDe(paso) {
+    var s = stats[normOficina(paso.oficina)];
+    if (s && s.casos >= minCasos) return s.mediana_dias;
+    calidad = 'debil';
+    return Number(paso.dias_default) || 0;
+  }
+  var total = Math.max(0, diasDe(ruta[idx]) - Number(estado.dias_quieto || 0));
+  for (var i = idx + 1; i < ruta.length; i++) total += diasDe(ruta[i]);
+  total = Math.round(total);
+  return {
+    etapa: ruta[idx].etapa, paso_en_ruta: idx + 1, dias_restantes_est: total,
+    fecha_cobro_est: fmtFecha(sumarDiasHabiles(hoy, total)), calidad_estimacion: calidad
+  };
+}
+
+if (typeof module !== 'undefined') {
+  var P_ = require('./Parse.js'); normOficina = P_.normOficina; parseFecha = P_.parseFecha; fmtFecha = P_.fmtFecha; sumarDiasHabiles = P_.sumarDiasHabiles;
+  module.exports = { mediana, canonizar, medianasPorOficina, proyectar };
+}
