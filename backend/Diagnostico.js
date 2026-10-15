@@ -46,7 +46,7 @@ function maestroAExpedientes(objs, cols) {
     if (!e) { sinExpediente.push({ nombre: nombre, texto: texto, fila: o.__fila }); return; }
     activos.push({
       clave: e.clave, nro: e.nro, anio: e.anio, nombre: nombre,
-      monto: parseMonto(o[cols.monto]),
+      monto: parseMonto(o[cols.monto]) || parseMonto(o[cols.montoTotal]),
       tipo: String(o[cols.tipo] || '').trim(),
       prioridad: String(o[cols.prioridad] || '').trim() || 'Normal',
       obs: String(o[cols.obs] || '').trim(),

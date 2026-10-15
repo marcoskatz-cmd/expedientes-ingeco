@@ -32,3 +32,12 @@ test('parseMonto', () => {
   assert.strictEqual(D.parseMonto(1234.5), 1234.5);
   assert.strictEqual(D.parseMonto(''), 0);
 });
+test('maestroAExpedientes usa Monto Total cuando Monto está vacío o en 0', () => {
+  const objs = [
+    { 'Nombre Obra': 'A', Expediente: '1/2026', 'Estado $': 'A Cobrar', Monto: '', 'Monto Total': ' $1.500,50 ', 'Tipo de contrato': 'x', __fila: 2 },
+    { 'Nombre Obra': 'B', Expediente: '2/2026', 'Estado $': 'A Cobrar', Monto: 0, 'Monto Total': 800, 'Tipo de contrato': 'x', __fila: 3 },
+    { 'Nombre Obra': 'C', Expediente: '3/2026', 'Estado $': 'A Cobrar', Monto: 10, 'Monto Total': 999, 'Tipo de contrato': 'x', __fila: 4 }
+  ];
+  const r = D.maestroAExpedientes(objs, CFG.COLS_MAESTRO);
+  assert.deepStrictEqual(r.activos.map(a => a.monto), [1500.5, 800, 10]);
+});

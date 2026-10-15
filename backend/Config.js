@@ -18,7 +18,7 @@ var CFG = {
   // Encabezados del maestro (planilla OBRAS INGECO). Se leen por nombre, nunca por posición.
   COLS_MAESTRO: {
     nombre: 'Nombre Obra', expediente: 'Expediente', estado$: 'Estado $', monto: 'Monto',
-    tipo: 'Tipo de contrato', prioridad: 'Prioridad de seguimiento', obs: 'Observaciones',
+    montoTotal: 'Monto Total', tipo: 'Tipo de contrato', prioridad: 'Prioridad de seguimiento', obs: 'Observaciones',
     inicio: 'Inicio de Expediente', oficina: 'Oficina', ultimoMov: 'Ultimo Movimiento'
   },
   COLS_MAESTRO_OBLIGATORIAS: ['Nombre Obra', 'Expediente', 'Estado $', 'Monto', 'Tipo de contrato'],
