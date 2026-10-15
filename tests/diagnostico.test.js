@@ -72,3 +72,14 @@ test('maestroAExpedientes excluye expedientes madre (en nombre u observaciones, 
   assert.deepStrictEqual(r.activos.map(a => a.clave), ['4/2026']);
   assert.strictEqual(r.madres, 3);
 });
+test('maestroAExpedientes excluye al expediente que otra fila nombra como madre', () => {
+  const base = { 'Estado $': 'A Cobrar', Monto: 1, 'Tipo de contrato': 'x' };
+  const objs = [
+    Object.assign({}, base, { 'Nombre Obra': 'Compra de 400 m3 de hormigón', Expediente: '90101/2026', __fila: 2 }),
+    Object.assign({}, base, { 'Nombre Obra': 'cert. 1 prov hormigon - expte 90101/2026(madre)', Expediente: '90202/2026', __fila: 3 }),
+    Object.assign({}, base, { 'Nombre Obra': 'Otra obra', Expediente: '5/2026', __fila: 4 })
+  ];
+  const r = D.maestroAExpedientes(objs, CFG.COLS_MAESTRO);
+  assert.deepStrictEqual(r.activos.map(a => a.clave), ['90202/2026', '5/2026']);
+  assert.strictEqual(r.madres, 1);
+});

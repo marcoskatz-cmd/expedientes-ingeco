@@ -38,9 +38,19 @@ function esCobrado_(estado$) { return /^cobrad[oa]/i.test(String(estado$ || '').
 function esACobrar_(estado$) { return /^a\s*cobrar/i.test(String(estado$ || '').trim()); }
 // "Expediente madre" / "EXPTE MADRE" / "expediente masdre": agrupan certificados que ya figuran como filas propias → afuera (pedido 15-oct-2026).
 function esMadre_(texto) { return /exp[a-z.]*\s+ma[sd]?d?re\b/i.test(String(texto || '')); }
+// "expte 90101/2026 (madre)" en otra fila → 90101/2026 es madre aunque su propio nombre no lo diga.
+function madresReferidas_(objs, cols) {
+  var set = {}, re = /(\d{1,7}\s*\/\s*\d{2,4})\s*\(?\s*ma[sd]?d?re\b/ig;
+  objs.forEach(function (o) {
+    var t = String(o[cols.nombre] || '') + ' ' + String(o[cols.obs] || ''), m;
+    while ((m = re.exec(t))) { var e = parseExpediente(m[1]); if (e) set[e.clave] = true; }
+  });
+  return set;
+}
 
 function maestroAExpedientes(objs, cols) {
   var activos = [], sinExpediente = [], cobrados = 0, otros = 0, madres = 0, cobradosClaves = [];
+  var referidas = madresReferidas_(objs, cols);
   objs.forEach(function (o) {
     var nombre = String(o[cols.nombre] || '').trim();
     var texto = String(o[cols.expediente] || '').trim();
@@ -50,6 +60,7 @@ function maestroAExpedientes(objs, cols) {
     if (esMadre_(nombre) || esMadre_(o[cols.obs])) { madres++; return; }
     var e = parseExpediente(texto);
     if (!e) { sinExpediente.push({ nombre: nombre, texto: texto, fila: o.__fila }); return; }
+    if (referidas[e.clave]) { madres++; return; }
     activos.push({
       clave: e.clave, nro: e.nro, anio: e.anio, nombre: nombre,
       monto: parseMonto(o[cols.monto]) || parseMonto(o[cols.montoTotal]),
