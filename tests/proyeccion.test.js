@@ -73,3 +73,14 @@ test('proyectar busca la mediana por el nombre canónico de la oficina de la rut
   assert.strictEqual(r.calidad_estimacion, 'buena');
   assert.strictEqual(r.dias_restantes_est, 14);
 });
+test('proyectar usa la ruta general (*) sin marcar débil cuando el tipo no tiene ruta propia', () => {
+  const general = [
+    { tipo_contrato: '*', orden: 1, oficina: 'CONTADURIA GENERAL', etapa: 'Final', dias_default: 2 },
+    { tipo_contrato: '*', orden: 2, oficina: 'TESORERIA GENERAL', etapa: 'Cobro', dias_default: 3 }
+  ];
+  const stats = { 'CONTADURIA GENERAL': { mediana_dias: 2, casos: 97 }, 'TESORERIA GENERAL': { mediana_dias: 9, casos: 10 } };
+  const r = Pr.proyectar({ tipo_contrato: 'Provisión', oficina_actual: 'Contaduría General', dias_quieto: 1 }, general, stats, hoy, 5, {});
+  assert.strictEqual(r.calidad_estimacion, 'buena');
+  assert.strictEqual(r.dias_restantes_est, 1 + 9);
+  assert.strictEqual(r.etapa, 'Final');
+});

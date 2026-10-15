@@ -5,26 +5,33 @@ function interpretarRespuesta(resp) {
   var curso = resp.curso || {};
   var oficina = String(curso.descripcion || '').trim();
   if (!oficina) return { ok: false, motivo: 'sin oficina (curso.descripcion vacío)' };
-  var fechaPase = parseFecha(curso.fecha);
-  if (!fechaPase) return { ok: false, motivo: 'fecha de pase inválida: ' + curso.fecha };
+  // El municipio a veces manda el pase sin fecha (fecha: null): la oficina vale igual, la fecha la pone el bot al detectarlo.
+  var fechaPase = (curso.fecha === null || curso.fecha === undefined || curso.fecha === '') ? null : parseFecha(curso.fecha);
+  if (fechaPase === null && curso.fecha) return { ok: false, motivo: 'fecha de pase inválida: ' + curso.fecha };
   var ex = resp.expediente || {};
-  return { ok: true, oficina: oficina, oficinaNorm: normOficina(oficina), fechaPase: fechaPase, asunto: String(ex.asunto || '').trim(), fechaInicio: parseFecha(ex.fecha) };
+  return {
+    ok: true, oficina: oficina, oficinaNorm: normOficina(oficina), fechaPase: fechaPase,
+    asunto: String(ex.asunto || '').trim(), comentarios: String(curso.comentarios || '').replace(/\s+/g, ' ').trim(),
+    fechaInicio: parseFecha(ex.fecha)
+  };
 }
 
 function compararEstado(previo, lectura, exp, hoy) {
   var desdePrev = previo ? parseFecha(previo.desde) : null;
   var mismaOficina = !!previo && normOficina(previo.oficina_actual) === lectura.oficinaNorm;
-  var mismaFecha = !!desdePrev && desdePrev.getTime() === lectura.fechaPase.getTime();
+  // Sin fecha del municipio solo se compara la oficina; la fecha del pase es la de detección.
+  var fechaPase = lectura.fechaPase || hoy;
+  var mismaFecha = !lectura.fechaPase || (!!desdePrev && desdePrev.getTime() === fechaPase.getTime());
   var cambio = !previo || !mismaOficina || !mismaFecha;
   var movimiento = null;
   if (cambio) {
     movimiento = {
-      id: nuevoId(), expediente: exp.clave, fecha_pase: fmtFecha(lectura.fechaPase), oficina: lectura.oficina,
-      descripcion_api: lectura.asunto, detectado_en: fmtFecha(hoy), origen: 'bot',
-      dias_en_oficina_anterior: (previo && desdePrev) ? diasHabiles(desdePrev, lectura.fechaPase) : ''
+      id: nuevoId(), expediente: exp.clave, fecha_pase: fmtFecha(fechaPase), oficina: lectura.oficina,
+      descripcion_api: (lectura.comentarios || lectura.asunto || '').slice(0, 300), detectado_en: fmtFecha(hoy), origen: 'bot',
+      dias_en_oficina_anterior: (previo && desdePrev) ? diasHabiles(desdePrev, fechaPase) : ''
     };
   }
-  var desde = cambio ? lectura.fechaPase : desdePrev;
+  var desde = cambio ? fechaPase : desdePrev;
   var estado = {
     expediente: exp.clave, nombre_obra: exp.nombre, monto: exp.monto, tipo_contrato: exp.tipo, prioridad: exp.prioridad,
     oficina_actual: cambio ? lectura.oficina : previo.oficina_actual,

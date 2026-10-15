@@ -37,17 +37,17 @@ function correr_(hoy) {
       var lect = r.status === 200 ? interpretarRespuesta(r.body) : { ok: false, motivo: 'HTTP ' + r.status };
       if (!lect.ok) {
         log_('AVISO', exp.clave, 'No encontrado o sin datos: ' + lect.motivo);
-        estado = prev ? Object.assign({}, prev, { error: lect.motivo, ultima_consulta: fmtFecha(hoy) }) : estadoVacio_(exp, hoy, lect.motivo);
+        estado = conPrevio_(estadoVacio_(exp, hoy, lect.motivo), prev, hoy);
       } else {
         var c = compararEstado(prev, lect, exp, hoy);
         if (c.movimiento) movimientos.push(c.movimiento);
         estado = Object.assign({}, prev || {}, c.estado);
-        if (c.cambio) escribirEnMaestro_(raw.hoja, raw.encabezados, exp.fila, lect);
+        if (c.cambio) escribirEnMaestro_(raw.hoja, raw.encabezados, exp.fila, lect, hoy);
       }
     } catch (e) {
       if (e.esAuth) { abortar = e.message; return; }
       errores++; log_('ERROR', exp.clave, e.message);
-      estado = prev ? Object.assign({}, prev, { error: e.message }) : estadoVacio_(exp, hoy, e.message);
+      estado = conPrevio_(estadoVacio_(exp, hoy, e.message), prev, hoy);
     }
     estados.push(estado);
   });
@@ -83,10 +83,19 @@ function estadoVacio_(exp, hoy, err) {
   return { expediente: exp.clave, nombre_obra: exp.nombre, monto: exp.monto, tipo_contrato: exp.tipo, prioridad: exp.prioridad, oficina_actual: '', desde: '', dias_quieto: '', ultima_consulta: fmtFecha(hoy), error: err };
 }
 
-function escribirEnMaestro_(hoja, enc, fila, lect) {
+// Conserva la última oficina conocida cuando la consulta de hoy falló (el previo puede venir sembrado de MOVIMIENTOS y no tener todas las columnas).
+function conPrevio_(estado, prev, hoy) {
+  if (!prev || !prev.oficina_actual) return estado;
+  estado.oficina_actual = prev.oficina_actual; estado.desde = prev.desde;
+  estado.dias_quieto = diasHabiles(parseFecha(prev.desde), hoy);
+  estado.alerta_enviada_en = prev.alerta_enviada_en || '';
+  return estado;
+}
+
+function escribirEnMaestro_(hoja, enc, fila, lect, hoy) {
   var iO = enc.indexOf(CFG.COLS_MAESTRO.oficina), iU = enc.indexOf(CFG.COLS_MAESTRO.ultimoMov);
   if (iO >= 0) hoja.getRange(fila, iO + 1).setValue(lect.oficina);
-  if (iU >= 0) hoja.getRange(fila, iU + 1).setValue(fmtFecha(lect.fechaPase));
+  if (iU >= 0) hoja.getRange(fila, iU + 1).setValue(fmtFecha(lect.fechaPase || hoy));
 }
 
 function mapaCanon_(ssD) {

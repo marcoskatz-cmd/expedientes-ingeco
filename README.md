@@ -13,7 +13,7 @@ dónde está cada uno, su recorrido entre oficinas y una proyección de cuándo 
 
 1. Cada hora el bot lee los expedientes con Estado $ distinto de "Cobrada" en el maestro.
 2. Consulta `POST /expedientes/ultimocurso` en `https://estadisticas.smt.gob.ar:5000` (la API que usa back.smt.gob.ar) por cada uno.
-3. Si la oficina o la fecha de pase cambió, guarda un movimiento en MOVIMIENTOS y actualiza Oficina / Ultimo Movimiento en el maestro.
+3. Si la oficina o la fecha de pase cambió (el municipio a veces no informa fecha: entonces vale la fecha de detección), guarda un movimiento en MOVIMIENTOS y actualiza Oficina / Ultimo Movimiento en el maestro.
 4. Recalcula la mediana de días hábiles por oficina y la proyección de días restantes (ruta esperada por tipo de contrato, hoja RUTAS).
 5. Si un expediente supera `umbral_dias_quieto` (CONFIG, default 10 días hábiles) manda mail a `mails_alerta` y un aviso por app-ingeco.
 
@@ -27,14 +27,16 @@ dónde está cada uno, su recorrido entre oficinas y una proyección de cuándo 
 | `SHEET_DATOS` | id que devuelve `crearPlanillaDatos()` |
 | `CLAVE_EXPEDIENTES` | clave del sistema en el backend común de app-ingeco (para `notificar`) |
 
-## Setup (una vez, desde el editor)
+## Setup (hecho el 15-oct-2026)
 
-1. `crearPlanillaDatos()` → copiar el id a `SHEET_DATOS`.
-2. `probarSmt()` → confirma login y forma de la respuesta (ajustar nombres de campos en `Smt.js` si hace falta).
-3. `importarRutas()` y `importarTrazabilidad()`.
-4. `correrAhora()` → primera pasada; revisar ESTADO_ACTUAL, MOVIMIENTOS y LOG.
-5. `instalarTrigger()`.
-6. En app-ingeco → Admin → Módulos: código `EXPEDIENTES`, URL de la web, embebido; asignar personas.
+Los ids de las planillas están como valores por defecto en `Config.js`; `SMT_CUIL` y `SMT_CLAVE` van en Script Properties.
+Las funciones de setup (`crearPlanillaDatos`, `importarRutas`, `importarTrazabilidad`, `correrAhora`, `instalarTrigger`) se pueden
+correr desde el editor o por `doPost` con las acciones `setup_*` de `Setup.js`, protegidas por la propiedad `SETUP_SECRET`
+(`setup_importar`, `setup_correr`, `setup_trigger`, `setup_log`, `setup_hoja`, `setup_probar`, `setup_rutas`, `setup_reset_alertas`,
+`setup_prop`, `setup_config`). Con `SETUP_SECRET` vacía quedan deshabilitadas.
+
+La hoja RUTAS tiene una ruta general de cobro (`tipo_contrato` = `*`) derivada de la trazabilidad histórica; se puede editar o
+agregar rutas por tipo de contrato. La hoja "Ruta contratos" del maestro describe la contratación, no el cobro, y no se usa.
 
 ## Deploy
 

@@ -26,8 +26,14 @@ var CFG = {
   MIN_CASOS_MEDIANA: 5
 };
 
+// Valores por defecto para no depender de la carga manual en Script Properties (una propiedad cargada los pisa).
+var PROPS_DEFAULT_ = {
+  SHEET_MAESTRO: '1Hl8HZqrH6lMwnAGpitA37ZGLg4szTcFGK7vmv92qkBA',   // OBRAS INGECO
+  SHEET_DATOS: '1XhsRoR6sAiZN5VE0IH3kk-WvihCM-IyvP5bxi06lYHA'      // Expedientes INGECO - Datos (creada 15-oct-2026)
+};
+
 function prop_(nombre) {
-  var v = PropertiesService.getScriptProperties().getProperty(nombre);
+  var v = PropertiesService.getScriptProperties().getProperty(nombre) || PROPS_DEFAULT_[nombre];
   if (!v) throw new Error('Falta la propiedad ' + nombre + ' en Script Properties');
   return v;
 }

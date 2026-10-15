@@ -4,15 +4,20 @@ function seleccionarAlertas(estados, umbral) {
   return estados.filter(function (e) { return e.dias_quieto !== '' && Number(e.dias_quieto) > umbral && !e.alerta_enviada_en; });
 }
 
+function hayCanal(mails, clave) { return !!(mails && mails.length) || !!clave; }
+
 function evaluarAlertas_(estados, cfg, ssD) {
   var umbral = Number(cfg.umbral_dias_quieto) || CFG.UMBRAL_DEFAULT;
   var lista = seleccionarAlertas(estados, umbral);
   if (!lista.length) return;
+  var mailsCfg = String(cfg.mails_alerta || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  var claveApp = PropertiesService.getScriptProperties().getProperty('CLAVE_EXPEDIENTES');
+  if (!hayCanal(mailsCfg, claveApp)) { log_('AVISO', '', lista.length + ' expedientes quietos, pero no hay mails_alerta en CONFIG ni CLAVE_EXPEDIENTES: no se avisa'); return; }
   var hoy = fmtFecha(new Date());
   var lineas = lista.map(function (e) { return '• ' + e.nombre_obra + ' (' + e.expediente + '): ' + e.dias_quieto + ' días hábiles en ' + e.oficina_actual + ' — $' + Number(e.monto).toLocaleString('es-AR'); });
   var titulo = lista.length + ' expediente(s) quietos más de ' + umbral + ' días hábiles';
   var cuerpo = lineas.join('\n') + '\n\nVer en la app INGECO → Expedientes.';
-  var mails = String(cfg.mails_alerta || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+  var mails = mailsCfg;
   if (mails.length) { try { MailApp.sendEmail(mails.join(','), 'Expedientes INGECO: ' + titulo, cuerpo); } catch (e) { log_('ERROR', '', 'Mail de alerta falló: ' + e.message); } }
   notificarApp_(titulo, cuerpo);
   lista.forEach(function (e) { e.alerta_enviada_en = hoy; });
@@ -31,4 +36,4 @@ function notificarApp_(titulo, cuerpo) {
   } catch (e) { log_('ERROR', '', 'notificar app-ingeco falló: ' + e.message); }
 }
 
-if (typeof module !== 'undefined') module.exports = { seleccionarAlertas };
+if (typeof module !== 'undefined') module.exports = { seleccionarAlertas, hayCanal };

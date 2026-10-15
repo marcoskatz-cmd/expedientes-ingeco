@@ -37,6 +37,8 @@ function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
   var tipo = normOficina(estado.tipo_contrato);
   var ruta = rutas.filter(function (r) { return normOficina(r.tipo_contrato) === tipo; });
   var calidad = 'buena';
+  // Sin ruta propia: primero la ruta general "*" (no penaliza), si no la de Contratación Directa (débil).
+  if (!ruta.length) ruta = rutas.filter(function (r) { return String(r.tipo_contrato).trim() === '*'; });
   if (!ruta.length) { ruta = rutas.filter(function (r) { return normOficina(r.tipo_contrato) === normOficina(RUTA_FALLBACK_); }); calidad = 'debil'; }
   ruta = ruta.slice().sort(function (a, b) { return Number(a.orden) - Number(b.orden); });
   var actual = canonizar(estado.oficina_actual, mapaCanon);

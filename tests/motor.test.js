@@ -69,3 +69,23 @@ test('previoDesdeMovimientos acepta fecha_pase como Date (Sheets la convierte)',
   const r = M.previoDesdeMovimientos([{ expediente: '1/2026', fecha_pase: new Date(2026, 8, 10), oficina: 'B' }]);
   assert.strictEqual(r['1/2026'].desde, '10/09/2026');
 });
+test('interpretarRespuesta acepta curso sin fecha y guarda los comentarios', () => {
+  const r = M.interpretarRespuesta({ expediente: { fecha: '2025-07-11T03:00:00.000Z', asunto: 'x' }, curso: { fecha: null, descripcion: 'TESORERIA GENERAL', comentarios: 'C/LBTO 06553 \r\n\r\n' } });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.fechaPase, null);
+  assert.strictEqual(r.comentarios, 'C/LBTO 06553');
+});
+test('compararEstado sin fecha: misma oficina → sin cambio; otra oficina → movimiento fechado hoy', () => {
+  const previo = { oficina_actual: 'Tesorería General', desde: '12/02/2026', alerta_enviada_en: '' };
+  const sinFecha = { ok: true, oficina: 'TESORERIA GENERAL', oficinaNorm: 'TESORERIA GENERAL', fechaPase: null, asunto: 'a', comentarios: '' };
+  const r1 = M.compararEstado(previo, sinFecha, exp, hoy);
+  assert.strictEqual(r1.cambio, false);
+  assert.strictEqual(r1.estado.desde, '12/02/2026');
+  const otra = Object.assign({}, sinFecha, { oficina: 'Contaduría', oficinaNorm: 'CONTADURIA' });
+  const r2 = M.compararEstado(previo, otra, exp, hoy);
+  assert.strictEqual(r2.cambio, true);
+  assert.strictEqual(r2.movimiento.fecha_pase, '15/10/2026');
+  assert.strictEqual(r2.estado.desde, '15/10/2026');
+  const r3 = M.compararEstado(null, sinFecha, exp, hoy);
+  assert.strictEqual(r3.movimiento.fecha_pase, '15/10/2026');
+});

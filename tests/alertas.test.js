@@ -10,3 +10,8 @@ test('seleccionarAlertas: solo quietos por encima del umbral y sin alerta previa
   ], 10);
   assert.deepStrictEqual(r.map(x => x.expediente), ['1']);
 });
+test('hayCanal: sin mails ni clave no hay a quién avisar', () => {
+  assert.strictEqual(A.hayCanal([], ''), false);
+  assert.strictEqual(A.hayCanal(['a@b.c'], ''), true);
+  assert.strictEqual(A.hayCanal([], 'clave'), true);
+});

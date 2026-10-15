@@ -13,6 +13,7 @@ function doPost(e) {
   try { req = JSON.parse((e.postData && e.postData.contents) || '{}'); } catch (err) { return json_({ ok: false, error: 'Pedido inválido' }); }
   var accion = String(req.accion || ''), p = req.payload || {};
   try {
+    if (accion.indexOf('setup_') === 0) return json_(accionSetup_(accion, p));
     // Toda acción exige una sesión válida de app-ingeco: los datos son montos y gestiones internas.
     var u = usuarioDeSesion_(p.sesion);
     if (!u) return json_({ ok: false, error: 'Abrí este sistema desde la app INGECO', sin_sesion: true });
