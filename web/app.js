@@ -192,6 +192,8 @@ async function renderStats() {
   let s;
   try { s = await api('estadisticas'); } catch (e) { $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; return; }
   const ofs = s.oficinas.filter(o => Number(o.casos)).sort((a, b) => Number(b.mediana_dias) - Number(a.mediana_dias));
+  const firmes = ofs.filter(o => Number(o.casos) >= (s.min_casos || 5));
+  const prov = o => Number(o.casos) < (s.min_casos || 5);
   const max = Math.max(1, ...ofs.map(o => Number(o.mediana_dias)));
   const act = DATA.estados.filter(e => e.oficina_actual);
   const porOf = {}; act.forEach(e => acum(porOf, e.ofKey, e.ofNombre, e));
@@ -202,22 +204,23 @@ async function renderStats() {
   const totalTipo = pasos.reduce((a, p) => a + p.dias, 0);
   let acumD = 0;
   const lineaHtml = pasos.length ? `
-    <div class="linea">${pasos.map(p => `<div class="seg ${esc(p.etapa)}${p.debil ? ' debil' : ''}" style="flex:${Math.max(p.dias, 0.6)}" title="${esc(p.oficina)}: ${n(p.dias)} días hábiles">${p.dias >= 2 ? n(p.dias) + ' d' : ''}</div>`).join('')}</div>
-    <div class="leyenda"><span><i style="background:#5eead4"></i>Preliminar</span><span><i style="background:#2dd4bf"></i>Media</span><span><i style="background:var(--teal)"></i>Final</span><span><i style="background:#115e59"></i>Cobro</span><span><i style="background:#999;background-image:repeating-linear-gradient(45deg,transparent 0 3px,#fff 3px 5px)"></i>rayado: pocos casos, valor por defecto</span></div>
-    <ul class="pasos">${pasos.map((p, i) => { acumD += p.dias; return `<li><span class="n">${i + 1}.</span><span>${esc(p.oficina)} <small class="n">${esc(p.etapa)}${p.casos ? ' · ' + n(p.casos) + ' casos' : ' · sin casos'}</small></span><span class="d"><b>${n(p.dias)}</b> d</span><span class="acum">día ${n(acumD)}</span></li>`; }).join('')}</ul>
-    <p><small>De punta a punta, un expediente tipo tarda <b>${n(totalTipo)} días hábiles</b> (unas ${n(Math.round(totalTipo / 5))} semanas). Se puede editar la ruta en la hoja RUTAS de la planilla de datos.</small></p>` : '<p class="vacio">No hay ruta cargada.</p>';
+    <div class="linea">${pasos.map(p => `<div class="seg ${esc(p.etapa)}${p.debil ? ' debil' : ''}" style="flex:${Math.max(p.dias, 0.6)}" title="${esc(p.oficina)}: ${n(p.dias)} días hábiles${p.debil ? ' (provisorio)' : ''}">${p.dias >= 2 ? (p.debil ? '"' + n(p.dias) + ' d"' : n(p.dias) + ' d') : ''}</div>`).join('')}</div>
+    <div class="leyenda"><span><i style="background:#5eead4"></i>Preliminar</span><span><i style="background:#2dd4bf"></i>Media</span><span><i style="background:var(--teal)"></i>Final</span><span><i style="background:#115e59"></i>Cobro</span><span><i style="background:#999;background-image:repeating-linear-gradient(45deg,transparent 0 3px,#fff 3px 5px)"></i>rayado y "entre comillas": dato provisorio, menos de ${n(s.min_casos || 5)} casos</span></div>
+    <ul class="pasos">${pasos.map((p, i) => { acumD += p.dias; return `<li><span class="n">${i + 1}.</span><span>${esc(p.oficina)} <small class="n">${esc(p.etapa)}${p.casos ? ' · ' + n(p.casos) + ' casos' : ' · sin casos'}</small></span><span class="d">${p.debil ? '<b>"' + n(p.dias) + '"</b> d' : '<b>' + n(p.dias) + '</b> d'}</span><span class="acum">día ${n(acumD)}</span></li>`; }).join('')}</ul>
+    <p><small>De punta a punta, un expediente tipo tarda <b>${n(totalTipo)} días hábiles</b> (unas ${n(Math.round(totalTipo / 5))} semanas). Se puede editar la ruta en la hoja RUTAS de la planilla de datos.</small></p>
+    ${pasos.some(p => p.etapa === 'Cobro' && p.debil) ? '<p><small><b>Tesorería va "entre comillas"</b>: en la planilla casi nunca se registró la salida de Tesorería, así que su duración todavía no se puede medir bien. El bot la mide desde ahora cada vez que un expediente se marca como cobrado en OBRAS INGECO; cuando junte ' + n(s.min_casos || 5) + ' casos el dato pasa a ser firme.</small></p>' : ''}` : '<p class="vacio">No hay ruta cargada.</p>';
   $('#vista').innerHTML = `
     <section class="tiles">
       <div class="tile"><small>Expediente tipo (ruta)</small><b>${n(totalTipo)} días hábiles</b><span>sumando la mediana de cada oficina</span></div>
       <div class="tile"><small>Inicio → Tesorería (real, mediana)</small><b>${n(s.total.mediana)} días hábiles</b><span>${n(s.total.casos)} expedientes completos · p25 ${n(s.total.p25)} · p75 ${n(s.total.p75)}</span></div>
-      <div class="tile"><small>Oficina más lenta</small><b>${ofs[0] ? esc(bonitoOf(ofs[0].nombre_canonico)) : '—'}</b><span>${ofs[0] ? n(ofs[0].mediana_dias) + ' días de mediana' : ''}</span></div>
+      <div class="tile"><small>Oficina más lenta (con datos firmes)</small><b>${firmes[0] ? esc(bonitoOf(firmes[0].nombre_canonico)) : '—'}</b><span>${firmes[0] ? n(firmes[0].mediana_dias) + ' días de mediana · ' + n(firmes[0].casos) + ' casos' : ''}</span></div>
       <div class="tile"><small>Expedientes activos</small><b>${act.length}</b><span>en ${Object.keys(porOf).length} oficinas</span></div>
     </section>
     <div class="card" style="margin-top:16px"><h2>Recorrido del expediente tipo, de principio a fin</h2>${lineaHtml}</div>
     <div class="dos" style="margin-top:16px">
       <div class="card"><h2>Días hábiles por oficina (mediana)</h2>
-        <div class="barras">${ofs.map(o => `<div class="fila"><span title="${esc(bonitoOf(o.nombre_canonico))}">${esc(bonitoOf(o.nombre_canonico))}</span><div class="barra"><i style="width:${Number(o.mediana_dias) / max * 100}%"></i></div><b>${n(o.mediana_dias)} d · ${n(o.casos)} casos</b></div>`).join('') || '<p class="vacio">Todavía no hay historia suficiente.</p>'}</div>
-        <p><small>Con menos de 5 casos la oficina no se usa para proyectar y la estimación queda marcada como débil.</small></p>
+        <div class="barras">${ofs.map(o => `<div class="fila"><span title="${esc(bonitoOf(o.nombre_canonico))}">${esc(bonitoOf(o.nombre_canonico))}</span><div class="barra"><i style="width:${Number(o.mediana_dias) / max * 100}%${prov(o) ? ';opacity:.4' : ''}"></i></div><b>${prov(o) ? '"' + n(o.mediana_dias) + ' d"' : n(o.mediana_dias) + ' d'} · ${n(o.casos)} caso${Number(o.casos) === 1 ? '' : 's'}</b></div>`).join('') || '<p class="vacio">Todavía no hay historia suficiente.</p>'}</div>
+        <p><small>Entre comillas: menos de ${n(s.min_casos || 5)} casos, dato provisorio; no se usa para proyectar y la estimación queda marcada como débil. Los días de una oficina se miden cuando el expediente sale de ella.</small></p>
       </div>
       <div class="card"><h2>Dónde está la plata hoy</h2>${barras(porOf, act.reduce((s, e) => s + Number(e.monto), 0), 'oficina')}</div>
     </div>`;

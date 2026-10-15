@@ -89,3 +89,13 @@ test('compararEstado sin fecha: misma oficina → sin cambio; otra oficina → m
   const r3 = M.compararEstado(null, sinFecha, exp, hoy);
   assert.strictEqual(r3.movimiento.fecha_pase, '15/10/2026');
 });
+test('cerrarCobrados: el expediente que pasó a Cobrada cierra su estadía con un movimiento COBRADO', () => {
+  const previos = { '1/2026': { oficina_actual: 'Tesorería General', desde: '01/10/2026' }, '2/2026': { oficina_actual: 'Contaduría', desde: '05/10/2026' }, '3/2026': { oficina_actual: '', desde: '' } };
+  const r = M.cerrarCobrados(previos, ['1/2026', '3/2026', '9/2026'], hoy);
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].expediente, '1/2026');
+  assert.strictEqual(r[0].oficina, 'COBRADO');
+  assert.strictEqual(r[0].fecha_pase, '15/10/2026');
+  assert.strictEqual(r[0].dias_en_oficina_anterior, 10);
+  assert.strictEqual(r[0].origen, 'bot');
+});

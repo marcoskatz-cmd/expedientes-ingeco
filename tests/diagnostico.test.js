@@ -56,3 +56,7 @@ test('maestroAExpedientes solo toma Estado $ "A Cobrar"; TOTAL, vacío y otros q
   assert.strictEqual(r.otros, 2);
   assert.strictEqual(r.sinExpediente.length, 0);
 });
+test('maestroAExpedientes devuelve las claves de los cobrados', () => {
+  const r = D.maestroAExpedientes([{ 'Nombre Obra': 'A', Expediente: '7/2026', 'Estado $': 'Cobrada', Monto: 1, 'Tipo de contrato': '', __fila: 2 }], CFG.COLS_MAESTRO);
+  assert.deepStrictEqual(r.cobradosClaves, ['7/2026']);
+});

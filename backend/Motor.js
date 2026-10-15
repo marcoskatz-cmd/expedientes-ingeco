@@ -55,11 +55,27 @@ function previoDesdeMovimientos(movimientos) {
   return out;
 }
 
+// Un expediente que en el maestro pasó a "Cobrada" y que teníamos en seguimiento: se cierra su estadía en la última
+// oficina (normalmente Tesorería) con un movimiento COBRADO fechado hoy. Es la única forma de medir cuánto tarda Tesorería.
+function cerrarCobrados(previos, cobradosClaves, hoy) {
+  var out = [];
+  (cobradosClaves || []).forEach(function (clave) {
+    var p = previos[clave];
+    if (!p || !p.oficina_actual) return;
+    var desde = parseFecha(p.desde);
+    out.push({
+      id: nuevoId(), expediente: clave, fecha_pase: fmtFecha(hoy), oficina: 'COBRADO', descripcion_api: 'Marcado como cobrado en la planilla OBRAS INGECO',
+      detectado_en: fmtFecha(hoy), origen: 'bot', dias_en_oficina_anterior: desde ? diasHabiles(desde, hoy) : ''
+    });
+  });
+  return out;
+}
+
 function nuevoId() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 if (typeof module !== 'undefined') {
   var P_ = require('./Parse.js'); parseFecha = P_.parseFecha; fmtFecha = P_.fmtFecha; normOficina = P_.normOficina; diasHabiles = P_.diasHabiles;
-  module.exports = { interpretarRespuesta, compararEstado, previoDesdeMovimientos, nuevoId };
+  module.exports = { interpretarRespuesta, compararEstado, previoDesdeMovimientos, cerrarCobrados, nuevoId };
 }

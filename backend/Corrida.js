@@ -55,7 +55,12 @@ function correr_(hoy) {
   if (maestro.activos.length && errores === maestro.activos.length) { log_('ERROR', '', 'Fallaron todas las consultas, no se guarda nada'); marcarFallo_(); return; }
 
   // 4. Guardar movimientos y recalcular estadísticas + proyección
-  agregarFilas_(ssD, 'MOVIMIENTOS', movimientos);
+  // Los que pasaron a "Cobrada" y estaban en seguimiento cierran su estadía (así Tesorería suma casos reales).
+  var enSeguimiento = {};
+  leerHoja_(ssD, 'ESTADO_ACTUAL').forEach(function (e) { if (e.oficina_actual) enSeguimiento[String(e.expediente)] = e; });
+  var cerrados = cerrarCobrados(enSeguimiento, maestro.cobradosClaves, hoy);
+  cerrados.forEach(function (m) { log_('INFO', m.expediente, 'Cobrado: ' + m.dias_en_oficina_anterior + ' días hábiles en ' + enSeguimiento[m.expediente].oficina_actual); });
+  agregarFilas_(ssD, 'MOVIMIENTOS', movimientos.concat(cerrados));
   var todosMovs = leerHoja_(ssD, 'MOVIMIENTOS');
   var mapaCanon = mapaCanon_(ssD);
   var stats = medianasPorOficina(todosMovs, mapaCanon);

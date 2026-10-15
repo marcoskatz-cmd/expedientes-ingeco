@@ -38,12 +38,12 @@ function esCobrado_(estado$) { return /^cobrad[oa]/i.test(String(estado$ || '').
 function esACobrar_(estado$) { return /^a\s*cobrar/i.test(String(estado$ || '').trim()); }
 
 function maestroAExpedientes(objs, cols) {
-  var activos = [], sinExpediente = [], cobrados = 0, otros = 0;
+  var activos = [], sinExpediente = [], cobrados = 0, otros = 0, cobradosClaves = [];
   objs.forEach(function (o) {
     var nombre = String(o[cols.nombre] || '').trim();
     var texto = String(o[cols.expediente] || '').trim();
     if (!nombre && !texto) return;
-    if (esCobrado_(o[cols.estado$])) { cobrados++; return; }
+    if (esCobrado_(o[cols.estado$])) { cobrados++; var ec = parseExpediente(texto); if (ec) cobradosClaves.push(ec.clave); return; }
     if (!esACobrar_(o[cols.estado$])) { otros++; return; }
     var e = parseExpediente(texto);
     if (!e) { sinExpediente.push({ nombre: nombre, texto: texto, fila: o.__fila }); return; }
@@ -57,7 +57,7 @@ function maestroAExpedientes(objs, cols) {
       fila: o.__fila
     });
   });
-  return { activos: activos, sinExpediente: sinExpediente, cobrados: cobrados, otros: otros };
+  return { activos: activos, sinExpediente: sinExpediente, cobrados: cobrados, otros: otros, cobradosClaves: cobradosClaves };
 }
 
 if (typeof module !== 'undefined') {
