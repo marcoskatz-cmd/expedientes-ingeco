@@ -5,10 +5,10 @@ var CACHE_TOKEN_ = 'smt_token';
 
 function loginSmt_() {
   var cuil = prop_('SMT_CUIL'), clave = prop_('SMT_CLAVE');
-  // Nombres de campos: confirmados/ajustados con probarSmt() la primera vez.
+  // El portal manda {dni, password} (el campo dni lleva el CUIL completo). Verificado 15-oct-2026.
   var r = UrlFetchApp.fetch(CFG.SMT_BASE + '/usuarios/login', {
     method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    payload: JSON.stringify({ cuil: cuil, password: clave })
+    payload: JSON.stringify({ dni: cuil, password: clave })
   });
   if (r.getResponseCode() !== 200) throw new Error('Login SMT falló: HTTP ' + r.getResponseCode() + ' ' + r.getContentText().slice(0, 200));
   var b = JSON.parse(r.getContentText() || '{}');

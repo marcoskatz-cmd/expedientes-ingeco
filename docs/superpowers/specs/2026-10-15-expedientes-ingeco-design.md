@@ -21,7 +21,7 @@ Portal: `https://ciudaddigital.smt.gob.ar` (solo login) → módulo Expedientes 
 BASE = https://estadisticas.smt.gob.ar:5000
 
 POST /usuarios/login
-  body JSON: { cuil, password }            (nombres de campos a confirmar en el primer login real)
+  body JSON: { dni: "<CUIL>", password }  (verificado 15-oct-2026)
   → { token, ... }                         el front lo guarda en localStorage "token"
                                            y lo manda como header Authorization: <token>
 
