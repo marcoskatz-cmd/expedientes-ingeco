@@ -36,15 +36,18 @@ function parseMonto(v) {
 function esCobrado_(estado$) { return /^cobrad[oa]/i.test(String(estado$ || '').trim()); }
 // Solo se siguen los que dicen "A Cobrar". Filas TOTAL, vacías u otros estados quedan afuera (pedido de Marcos, 15-oct-2026).
 function esACobrar_(estado$) { return /^a\s*cobrar/i.test(String(estado$ || '').trim()); }
+// "Expediente madre" / "EXPTE MADRE" / "expediente masdre": agrupan certificados que ya figuran como filas propias → afuera (pedido 15-oct-2026).
+function esMadre_(texto) { return /exp[a-z.]*\s+ma[sd]?d?re\b/i.test(String(texto || '')); }
 
 function maestroAExpedientes(objs, cols) {
-  var activos = [], sinExpediente = [], cobrados = 0, otros = 0, cobradosClaves = [];
+  var activos = [], sinExpediente = [], cobrados = 0, otros = 0, madres = 0, cobradosClaves = [];
   objs.forEach(function (o) {
     var nombre = String(o[cols.nombre] || '').trim();
     var texto = String(o[cols.expediente] || '').trim();
     if (!nombre && !texto) return;
     if (esCobrado_(o[cols.estado$])) { cobrados++; var ec = parseExpediente(texto); if (ec) cobradosClaves.push(ec.clave); return; }
     if (!esACobrar_(o[cols.estado$])) { otros++; return; }
+    if (esMadre_(nombre) || esMadre_(o[cols.obs])) { madres++; return; }
     var e = parseExpediente(texto);
     if (!e) { sinExpediente.push({ nombre: nombre, texto: texto, fila: o.__fila }); return; }
     activos.push({
@@ -57,7 +60,7 @@ function maestroAExpedientes(objs, cols) {
       fila: o.__fila
     });
   });
-  return { activos: activos, sinExpediente: sinExpediente, cobrados: cobrados, otros: otros, cobradosClaves: cobradosClaves };
+  return { activos: activos, sinExpediente: sinExpediente, cobrados: cobrados, otros: otros, madres: madres, cobradosClaves: cobradosClaves };
 }
 
 if (typeof module !== 'undefined') {

@@ -60,3 +60,15 @@ test('maestroAExpedientes devuelve las claves de los cobrados', () => {
   const r = D.maestroAExpedientes([{ 'Nombre Obra': 'A', Expediente: '7/2026', 'Estado $': 'Cobrada', Monto: 1, 'Tipo de contrato': '', __fila: 2 }], CFG.COLS_MAESTRO);
   assert.deepStrictEqual(r.cobradosClaves, ['7/2026']);
 });
+test('maestroAExpedientes excluye expedientes madre (en nombre u observaciones, incluso mal escrito)', () => {
+  const base = { 'Estado $': 'A Cobrar', Monto: 1, 'Tipo de contrato': 'x' };
+  const objs = [
+    Object.assign({}, base, { 'Nombre Obra': 'Compra de mezcla asfaltica, EXPTE MADRE', Expediente: '1/2026', __fila: 2 }),
+    Object.assign({}, base, { 'Nombre Obra': 'Obra X', Expediente: '2/2026', Observaciones: '242028 - expediente masdre', __fila: 3 }),
+    Object.assign({}, base, { 'Nombre Obra': 'Obra Y (Expediente Madre)', Expediente: '3/2026', __fila: 4 }),
+    Object.assign({}, base, { 'Nombre Obra': 'Cert 1 - hijo del madre 1/2026', Expediente: '4/2026', __fila: 5 })
+  ];
+  const r = D.maestroAExpedientes(objs, CFG.COLS_MAESTRO);
+  assert.deepStrictEqual(r.activos.map(a => a.clave), ['4/2026']);
+  assert.strictEqual(r.madres, 3);
+});

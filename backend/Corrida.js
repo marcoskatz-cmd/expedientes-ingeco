@@ -78,7 +78,7 @@ function correr_(hoy) {
   // 5. Alertas
   evaluarAlertas_(estados, cfg, ssD);
   PropertiesService.getScriptProperties().setProperty('FALLOS_SEGUIDOS', '0');
-  log_('INFO', '', 'Corrida ok: ' + maestro.activos.length + ' a cobrar consultados (' + maestro.cobrados + ' cobrados y ' + maestro.otros + ' con otro estado quedaron afuera), ' + movimientos.length + ' movimientos, ' + errores + ' errores');
+  log_('INFO', '', 'Corrida ok: ' + maestro.activos.length + ' a cobrar consultados (' + maestro.cobrados + ' cobrados y ' + maestro.otros + ' con otro estado y ' + maestro.madres + ' expedientes madre quedaron afuera), ' + movimientos.length + ' movimientos, ' + errores + ' errores');
 }
 
 /** Para correr a mano desde el editor, fuera de horario. */
