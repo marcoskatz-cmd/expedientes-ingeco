@@ -64,11 +64,10 @@ function miniLista(items, derecha) {
 
 function renderTablero() {
   const act = DATA.estados.filter(e => e.oficina_actual);
-  const porEtapa = {}, porOficina = {};
-  act.forEach(e => { acum(porEtapa, e.etapa || 'Sin etapa', e.etapa || 'Sin etapa', e); acum(porOficina, e.ofKey, e.ofNombre, e); });
+  const porOficina = {};
+  act.forEach(e => acum(porOficina, e.ofKey, e.ofNombre, e));
   const quietos = act.filter(e => Number(e.dias_quieto) > DATA.umbral).sort((a, b) => Number(b.dias_quieto) - Number(a.dias_quieto));
   const total = act.reduce((s, e) => s + Number(e.monto), 0);
-  const proxList = act.filter(e => num(e.dias_restantes_est) != null).sort((a, b) => Number(a.dias_restantes_est) - Number(b.dias_restantes_est));
   const sinDato = DATA.estados.filter(e => !e.oficina_actual);
   const sinMonto = act.filter(e => !Number(e.monto)).length;
   const enCobro = act.filter(e => e.etapa === 'Cobro');
@@ -80,15 +79,28 @@ function renderTablero() {
       ${sinDato.length ? `<div class="tile"><small>Sin dato del municipio</small><b>${sinDato.length}</b><span>no encontrados o con error</span></div>` : ''}
     </section>
     <div class="dos">
-      <div class="card"><h2>Próximos cobros estimados</h2>${miniLista(proxList.slice(0, 8), e => `<b>${pesos(e.monto)}</b><br><small>${n(e.fecha_cobro_est)} · ~${n(e.dias_restantes_est)} d${e.calidad_estimacion === 'debil' ? ' (débil)' : ''}</small>`)}</div>
       <div class="card"><h2>Más tiempo quietos</h2>${miniLista(quietos.slice(0, 8), e => `<b>${n(e.dias_quieto)} días</b><br><small>${pesos(e.monto)}</small>`)}</div>
-      <div class="card"><h2>Por etapa</h2>${barras(porEtapa, total, 'etapa')}</div>
-      <div class="card"><h2>Por oficina</h2>${barras(porOficina, total, 'oficina')}</div>
+      <div class="card"><h2>Por oficina</h2><p><small>Tocá una oficina para ver sus expedientes.</small></p>${porOficinaDesplegable(act, porOficina, total)}</div>
     </div>`;
   document.querySelectorAll('.tile[data-ir]').forEach(t => t.onclick = () => irALista(JSON.parse(t.dataset.ir)));
   document.querySelectorAll('.mini li').forEach(li => li.onclick = () => ficha(li.dataset.exp));
-  enlazarBarras();
+  document.querySelectorAll('.of-cab').forEach(c => c.onclick = () => { const d = c.nextElementSibling; d.hidden = !d.hidden; c.classList.toggle('abierto', !d.hidden); });
+  document.querySelectorAll('.of-det li').forEach(li => li.onclick = ev => { ev.stopPropagation(); ficha(li.dataset.exp); });
 }
+
+// Lista de oficinas con el monto y, al tocar, los expedientes que están en cada una.
+function porOficinaDesplegable(act, porOficina, total) {
+  const items = Object.entries(porOficina).sort((a, b) => b[1].monto - a[1].monto);
+  if (!items.length) return '<p class="vacio">Sin datos</p>';
+  return items.map(([k, v]) => {
+    const exps = act.filter(e => e.ofKey === k).sort((a, b) => Number(b.dias_quieto) - Number(a.dias_quieto));
+    return `<div class="of">
+      <div class="of-cab"><span class="flecha">▸</span><span class="nom">${esc(v.nombre)} <small>(${v.cant})</small></span><div class="barra"><i style="width:${total ? v.monto / total * 100 : 0}%"></i></div><b>${pesos(v.monto)}</b></div>
+      <ul class="of-det" hidden>${exps.map(e => `<li data-exp="${esc(e.expediente)}" class="${semaforo(e)}"><span class="nom" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra)}<small>${esc(e.expediente)} · desde ${n(e.desde)}</small></span><span class="dias"><span class="chip ${semaforo(e)}">${n(e.dias_quieto)} d</span></span><b>${pesos(e.monto)}</b></li>`).join('')}</ul>
+    </div>`;
+  }).join('');
+}
+
 
 function filtrar() {
   const q = F.q.toLowerCase();
