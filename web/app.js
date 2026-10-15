@@ -78,9 +78,9 @@ function renderTablero() {
       <div class="tile click teal" data-ir='{"etapa":"Cobro"}'><small>En Tesorería (por cobrar)</small><b>${enCobro.length}</b><span>${pesos(enCobro.reduce((s, e) => s + Number(e.monto), 0))}</span></div>
       ${sinDato.length ? `<div class="tile"><small>Sin dato del municipio</small><b>${sinDato.length}</b><span>no encontrados o con error</span></div>` : ''}
     </section>
-    <div class="dos">
-      <div class="card"><h2>Más tiempo quietos</h2>${miniLista(quietos.slice(0, 8), e => `<b>${n(e.dias_quieto)} días</b><br><small>${pesos(e.monto)}</small>`)}</div>
+    <div class="uno">
       <div class="card"><h2>Por oficina</h2><p><small>Tocá una oficina para ver sus expedientes.</small></p>${porOficinaDesplegable(act, porOficina, total)}</div>
+      <div class="card"><h2>Más tiempo quietos</h2>${miniLista(quietos.slice(0, 8), e => `<b>${n(e.dias_quieto)} días</b><br><small>${pesos(e.monto)}</small>`)}</div>
     </div>`;
   document.querySelectorAll('.tile[data-ir]').forEach(t => t.onclick = () => irALista(JSON.parse(t.dataset.ir)));
   document.querySelectorAll('.mini li').forEach(li => li.onclick = () => ficha(li.dataset.exp));
