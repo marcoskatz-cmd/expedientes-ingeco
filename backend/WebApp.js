@@ -1,6 +1,10 @@
 // API JSON para la PWA. Content-Type de entrada text/plain (evita preflight CORS), respuesta JSON.
 
-function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+// Las fechas que Sheets haya convertido a Date salen como dd/mm/yyyy, nunca como ISO.
+function json_(o) {
+  var txt = JSON.stringify(o, function (k, v) { return (this[k] instanceof Date) ? fmtFecha(this[k]) : v; });
+  return ContentService.createTextOutput(txt).setMimeType(ContentService.MimeType.JSON);
+}
 
 function doGet() { return json_({ ok: true, sistema: 'Expedientes INGECO' }); }
 
@@ -9,13 +13,15 @@ function doPost(e) {
   try { req = JSON.parse((e.postData && e.postData.contents) || '{}'); } catch (err) { return json_({ ok: false, error: 'Pedido inválido' }); }
   var accion = String(req.accion || ''), p = req.payload || {};
   try {
+    // Toda acción exige una sesión válida de app-ingeco: los datos son montos y gestiones internas.
+    var u = usuarioDeSesion_(p.sesion);
+    if (!u) return json_({ ok: false, error: 'Abrí este sistema desde la app INGECO', sin_sesion: true });
     if (accion === 'estado') return json_(accionEstado_());
     if (accion === 'ficha') return json_(accionFicha_(p.expediente));
     if (accion === 'estadisticas') return json_(accionEstadisticas_());
-    if (accion === 'gestion') return json_(accionGestion_(p));
+    if (accion === 'gestion') return json_(accionGestion_(p, u));
     if (accion === 'forzar_corrida') {
-      var u = usuarioDeSesion_(p.sesion);
-      if (!u || !u.es_admin) return json_({ ok: false, error: 'Solo administradores' });
+      if (!u.es_admin) return json_({ ok: false, error: 'Solo administradores' });
       correr(true); return json_({ ok: true });
     }
     return json_({ ok: false, error: 'Acción desconocida: ' + accion });
@@ -38,10 +44,11 @@ function accionEstado_() {
 
 function accionFicha_(expediente) {
   var ssD = ssDatos_();
-  var est = leerHoja_(ssD, 'ESTADO_ACTUAL').filter(function (e) { return e.expediente === expediente; })[0];
+  expediente = String(expediente || '');
+  var est = leerHoja_(ssD, 'ESTADO_ACTUAL').filter(function (e) { return String(e.expediente) === expediente; })[0];
   if (!est) return { ok: false, error: 'No encontré el expediente ' + expediente };
-  var movs = leerHoja_(ssD, 'MOVIMIENTOS').filter(function (m) { return m.expediente === expediente; });
-  var gest = leerHoja_(ssD, 'GESTIONES').filter(function (g) { return g.expediente === expediente; });
+  var movs = leerHoja_(ssD, 'MOVIMIENTOS').filter(function (m) { return String(m.expediente) === expediente; });
+  var gest = leerHoja_(ssD, 'GESTIONES').filter(function (g) { return String(g.expediente) === expediente; });
   return { ok: true, estado: est, movimientos: movs, gestiones: gest };
 }
 
@@ -62,9 +69,7 @@ function accionEstadisticas_() {
   return { ok: true, oficinas: oficinas, total: { casos: totales.length, mediana: mediana(totales), p25: q(0.25), p75: q(0.75) } };
 }
 
-function accionGestion_(p) {
-  var u = usuarioDeSesion_(p.sesion);
-  if (!u) return { ok: false, error: 'Abrí este sistema desde la app INGECO para cargar gestiones' };
+function accionGestion_(p, u) {
   var tipos = ['llamé', 'fui', 'nota'];
   if (tipos.indexOf(p.tipo) < 0) return { ok: false, error: 'Tipo de gestión inválido' };
   if (!p.expediente || !String(p.texto || '').trim()) return { ok: false, error: 'Falta el texto de la gestión' };
@@ -75,7 +80,9 @@ function accionGestion_(p) {
 // Verifica la sesión de módulo contra el backend común de app-ingeco (cache 5 min).
 function usuarioDeSesion_(sesion) {
   if (!sesion) return null;
-  var cache = CacheService.getScriptCache(), k = 'ses_' + String(sesion).slice(0, 40);
+  // Clave de caché = hash del token completo (un prefijo compartido mezclaría sesiones distintas).
+  var hash = Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(sesion), Utilities.Charset.UTF_8));
+  var cache = CacheService.getScriptCache(), k = 'ses_' + hash;
   var c = cache.get(k); if (c) return JSON.parse(c);
   var r = UrlFetchApp.fetch(CFG.APP_INGECO_BACKEND, { method: 'post', contentType: 'text/plain', muteHttpExceptions: true, payload: JSON.stringify({ accion: 'validar_sesion_modulo', payload: { sesion: sesion, modulo: CFG.MODULO } }) });
   var b; try { b = JSON.parse(r.getContentText()); } catch (e) { return null; }

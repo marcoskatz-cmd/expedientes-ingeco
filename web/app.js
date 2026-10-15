@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/__DEPLOYMENT_ID__/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzI1b3roxHz-4uF6bcwL0jqlOIq_5Erw8gqiq-DdgWm8G_cVLSgeGV3wGzrMhMAKRCieQ/exec';
 const $ = s => document.querySelector(s);
 let DATA = null, VISTA = 'tablero', Q = '';
 const DEV = location.search.includes('dev=1');
@@ -6,11 +6,12 @@ const DEV = location.search.includes('dev=1');
 async function api(accion, payload) {
   // dev=1: lee respuestas simuladas de tests/mock (solo para desarrollo local).
   const r = DEV ? await fetch('../tests/mock/' + accion + '.json')
-    : await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ accion, payload: payload || {} }) });
+    : await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ accion, payload: Object.assign({ sesion: window.INGECO_SESION || '' }, payload || {}) }) });
   const j = await r.json();
-  if (!j.ok) throw new Error(j.error || 'Falló la consulta');
+  if (!j.ok) { if (j.sin_sesion) sinAcceso(); throw new Error(j.error || 'Falló la consulta'); }
   return j;
 }
+const n = v => esc(v); // alias corto para valores numéricos/fechas insertados en HTML
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pesos = n => '$ ' + Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 0 });
 const semaforo = e => e.error || !e.oficina_actual ? 'gris' : (Number(e.dias_quieto) > DATA.umbral ? 'ambar' : 'teal');
@@ -65,8 +66,8 @@ function renderLista() {
   $('#vista').innerHTML = `<input id="buscar" placeholder="Buscar obra, expediente u oficina" value="${esc(Q)}">
     <ul class="lista">${lista.map(e => `<li class="${semaforo(e)}" data-exp="${esc(e.expediente)}">
       <b>${esc(e.nombre_obra)}</b><span>${esc(e.expediente)} · ${pesos(e.monto)}</span>
-      <span>${e.oficina_actual ? esc(e.oficina_actual) + ' · ' + e.dias_quieto + ' días' : 'Sin dato: ' + esc(e.error)}</span>
-      <span>${e.dias_restantes_est !== '' && e.dias_restantes_est != null ? 'Faltan ~' + e.dias_restantes_est + ' días hábiles (' + e.fecha_cobro_est + ')' + (e.calidad_estimacion === 'debil' ? ' · estimación débil' : '') : esc(e.etapa || '')}</span>
+      <span>${e.oficina_actual ? esc(e.oficina_actual) + ' · ' + n(e.dias_quieto) + ' días' : 'Sin dato: ' + esc(e.error)}</span>
+      <span>${e.dias_restantes_est !== '' && e.dias_restantes_est != null ? 'Faltan ~' + n(e.dias_restantes_est) + ' días hábiles (' + n(e.fecha_cobro_est) + ')' + (e.calidad_estimacion === 'debil' ? ' · estimación débil' : '') : esc(e.etapa || '')}</span>
     </li>`).join('') || '<li class="vacio">Nada que mostrar</li>'}</ul>`;
   const inp = $('#buscar');
   inp.oninput = ev => { Q = ev.target.value; const pos = inp.selectionStart; renderLista(); const i2 = $('#buscar'); i2.focus(); i2.setSelectionRange(pos, pos); };
@@ -80,10 +81,10 @@ async function ficha(exp) {
   const e = f.estado, u = window.INGECO_USUARIO;
   $('#vista').innerHTML = `<button class="volver" id="volver">← Volver</button>
     <h2>${esc(e.nombre_obra)}</h2><p>${esc(e.expediente)} · ${pesos(e.monto)} · ${esc(e.tipo_contrato)}</p>
-    <p class="estado ${semaforo(e)}">${e.oficina_actual ? 'En <b>' + esc(e.oficina_actual) + '</b> desde ' + e.desde + ' (' + e.dias_quieto + ' días hábiles)' : 'Sin dato: ' + esc(e.error)}</p>
-    <p>${e.dias_restantes_est !== '' && e.dias_restantes_est != null ? 'Cobro estimado: <b>' + e.fecha_cobro_est + '</b> (~' + e.dias_restantes_est + ' días hábiles' + (e.calidad_estimacion === 'debil' ? ', estimación débil' : '') + ')' : 'Sin proyección: ' + esc(e.etapa || '')}</p>
-    <h3>Recorrido</h3><ol class="tiempo">${f.movimientos.map(m => `<li class="${esc(m.origen)}"><b>${m.fecha_pase}</b> ${esc(m.oficina)}${m.dias_en_oficina_anterior !== '' ? ' <small>(' + m.dias_en_oficina_anterior + ' días en la anterior)</small>' : ''}</li>`).join('') || '<li>Sin movimientos registrados</li>'}</ol>
-    <h3>Gestiones</h3><ul class="gest">${f.gestiones.map(g => `<li><b>${g.fecha}</b> ${esc(g.tipo)} — ${esc(g.texto)} <small>${esc(g.nombre)}</small></li>`).join('') || '<li>Ninguna todavía</li>'}</ul>
+    <p class="estado ${semaforo(e)}">${e.oficina_actual ? 'En <b>' + esc(e.oficina_actual) + '</b> desde ' + n(e.desde) + ' (' + n(e.dias_quieto) + ' días hábiles)' : 'Sin dato: ' + esc(e.error)}</p>
+    <p>${e.dias_restantes_est !== '' && e.dias_restantes_est != null ? 'Cobro estimado: <b>' + n(e.fecha_cobro_est) + '</b> (~' + n(e.dias_restantes_est) + ' días hábiles' + (e.calidad_estimacion === 'debil' ? ', estimación débil' : '') + ')' : 'Sin proyección: ' + esc(e.etapa || '')}</p>
+    <h3>Recorrido</h3><ol class="tiempo">${f.movimientos.map(m => `<li class="${esc(m.origen)}"><b>${n(m.fecha_pase)}</b> ${esc(m.oficina)}${m.dias_en_oficina_anterior !== '' ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}</li>`).join('') || '<li>Sin movimientos registrados</li>'}</ol>
+    <h3>Gestiones</h3><ul class="gest">${f.gestiones.map(g => `<li><b>${n(g.fecha)}</b> ${esc(g.tipo)} — ${esc(g.texto)} <small>${esc(g.nombre)}</small></li>`).join('') || '<li>Ninguna todavía</li>'}</ul>
     ${u ? `<form id="fgest"><select name="tipo"><option value="llamé">Llamé</option><option value="fui">Fui</option><option value="nota">Nota</option></select>
       <input name="texto" placeholder="Qué pasó" required maxlength="500"><button>Agregar gestión</button></form><p id="okgest"></p>` : '<p class="vacio">Para cargar gestiones abrí desde la app INGECO.</p>'}`;
   $('#volver').onclick = () => renderLista();
@@ -102,8 +103,8 @@ async function renderStats() {
   try { s = await api('estadisticas'); } catch (e) { $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; return; }
   const ofs = s.oficinas.filter(o => o.casos).sort((a, b) => b.mediana_dias - a.mediana_dias);
   const max = Math.max(1, ...ofs.map(o => Number(o.mediana_dias)));
-  $('#vista').innerHTML = `<section class="tiles"><div class="tile"><small>Inicio → Tesorería (mediana)</small><b>${s.total.mediana} días</b><span>${s.total.casos} casos · p25 ${s.total.p25} · p75 ${s.total.p75}</span></div></section>
-    <h2>Días hábiles por oficina (mediana)</h2><div class="barras">${ofs.map(o => `<div class="fila"><span>${esc(o.nombre_canonico)}</span><div class="barra"><i style="width:${o.mediana_dias / max * 100}%"></i></div><b>${o.mediana_dias} d · ${o.casos} casos</b></div>`).join('') || '<p class="vacio">Todavía no hay historia suficiente.</p>'}</div>`;
+  $('#vista').innerHTML = `<section class="tiles"><div class="tile"><small>Inicio → Tesorería (mediana)</small><b>${n(s.total.mediana)} días</b><span>${n(s.total.casos)} casos · p25 ${n(s.total.p25)} · p75 ${n(s.total.p75)}</span></div></section>
+    <h2>Días hábiles por oficina (mediana)</h2><div class="barras">${ofs.map(o => `<div class="fila"><span>${esc(o.nombre_canonico)}</span><div class="barra"><i style="width:${o.mediana_dias / max * 100}%"></i></div><b>${n(o.mediana_dias)} d · ${n(o.casos)} casos</b></div>`).join('') || '<p class="vacio">Todavía no hay historia suficiente.</p>'}</div>`;
 }
 
 document.querySelectorAll('.barra button').forEach(b => b.onclick = () => { VISTA = b.dataset.v; document.querySelectorAll('.barra button').forEach(x => x.classList.toggle('activo', x === b)); render(); });

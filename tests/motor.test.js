@@ -55,3 +55,17 @@ test('misma oficina pero fecha de pase nueva → movimiento (pase interno)', () 
   assert.strictEqual(r.estado.desde, '14/10/2026');
 });
 test('nuevoId distinto cada vez', () => assert.notStrictEqual(M.nuevoId(), M.nuevoId()));
+test('previoDesdeMovimientos toma el último movimiento de cada expediente', () => {
+  const movs = [
+    { expediente: '1/2026', fecha_pase: '01/09/2026', oficina: 'A' },
+    { expediente: '1/2026', fecha_pase: '10/09/2026', oficina: 'B' },
+    { expediente: '2/2026', fecha_pase: '05/09/2026', oficina: 'C' }
+  ];
+  const r = M.previoDesdeMovimientos(movs);
+  assert.deepStrictEqual(r['1/2026'], { oficina_actual: 'B', desde: '10/09/2026', alerta_enviada_en: '' });
+  assert.deepStrictEqual(r['2/2026'], { oficina_actual: 'C', desde: '05/09/2026', alerta_enviada_en: '' });
+});
+test('previoDesdeMovimientos acepta fecha_pase como Date (Sheets la convierte)', () => {
+  const r = M.previoDesdeMovimientos([{ expediente: '1/2026', fecha_pase: new Date(2026, 8, 10), oficina: 'B' }]);
+  assert.strictEqual(r['1/2026'].desde, '10/09/2026');
+});

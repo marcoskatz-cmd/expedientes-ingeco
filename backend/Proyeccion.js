@@ -34,18 +34,18 @@ function medianasPorOficina(movimientos, mapaCanon) {
 var RUTA_FALLBACK_ = 'Contratación Directa';
 
 function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
-  var tipo = String(estado.tipo_contrato || '').trim();
-  var ruta = rutas.filter(function (r) { return r.tipo_contrato === tipo; });
+  var tipo = normOficina(estado.tipo_contrato);
+  var ruta = rutas.filter(function (r) { return normOficina(r.tipo_contrato) === tipo; });
   var calidad = 'buena';
-  if (!ruta.length) { ruta = rutas.filter(function (r) { return r.tipo_contrato === RUTA_FALLBACK_; }); calidad = 'debil'; }
+  if (!ruta.length) { ruta = rutas.filter(function (r) { return normOficina(r.tipo_contrato) === normOficina(RUTA_FALLBACK_); }); calidad = 'debil'; }
   ruta = ruta.slice().sort(function (a, b) { return Number(a.orden) - Number(b.orden); });
   var actual = canonizar(estado.oficina_actual, mapaCanon);
   var idx = -1;
-  ruta.forEach(function (r, i) { if (idx < 0 && normOficina(r.oficina) === actual) idx = i; });
+  ruta.forEach(function (r, i) { if (idx < 0 && canonizar(r.oficina, mapaCanon) === actual) idx = i; });
   if (idx < 0) return { etapa: 'Fuera de ruta', paso_en_ruta: '', dias_restantes_est: '', fecha_cobro_est: '', calidad_estimacion: 'debil' };
 
   function diasDe(paso) {
-    var s = stats[normOficina(paso.oficina)];
+    var s = stats[canonizar(paso.oficina, mapaCanon)];
     if (s && s.casos >= minCasos) return s.mediana_dias;
     calidad = 'debil';
     return Number(paso.dias_default) || 0;

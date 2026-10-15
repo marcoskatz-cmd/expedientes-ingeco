@@ -3,6 +3,12 @@
 function correr(forzado) {
   var hoy = new Date();
   if (!forzado && !esHorarioHabil_(hoy)) return;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) { console.log('Ya hay una corrida en curso, salgo'); return; }
+  try { correr_(hoy); } finally { lock.releaseLock(); }
+}
+
+function correr_(hoy) {
   CORRIDA_ID_ = null;
   var ssD = ssDatos_(), ssM = ssMaestro_();
 
@@ -14,14 +20,17 @@ function correr(forzado) {
   maestro.sinExpediente.forEach(function (s) { log_('AVISO', '', 'Sin expediente válido: "' + s.nombre + '" (' + s.texto + ', fila ' + s.fila + ')'); });
 
   // 2. Estado previo
-  var previos = {};
-  leerHoja_(ssD, 'ESTADO_ACTUAL').forEach(function (e) { previos[e.expediente] = e; });
+  // Si no hay estado guardado, el último movimiento conocido (importado o del bot) hace de previo:
+  // así la primera corrida no duplica lo que ya está en MOVIMIENTOS.
+  var previos = previoDesdeMovimientos(leerHoja_(ssD, 'MOVIMIENTOS'));
+  leerHoja_(ssD, 'ESTADO_ACTUAL').forEach(function (e) { previos[String(e.expediente)] = e; });
 
   // 3. Consultar
-  var movimientos = [], estados = [], errores = 0;
+  var movimientos = [], estados = [], errores = 0, abortar = null;
   try { tokenSmt_(); } catch (e) { log_('ERROR', '', 'No se pudo entrar al portal del municipio: ' + e.message); marcarFallo_(); return; }
 
   maestro.activos.forEach(function (exp) {
+    if (abortar) return;
     var prev = previos[exp.clave] || null, estado;
     try {
       var r = ultimoCurso_(exp.nro, exp.anio);
@@ -36,11 +45,13 @@ function correr(forzado) {
         if (c.cambio) escribirEnMaestro_(raw.hoja, raw.encabezados, exp.fila, lect);
       }
     } catch (e) {
+      if (e.esAuth) { abortar = e.message; return; }
       errores++; log_('ERROR', exp.clave, e.message);
       estado = prev ? Object.assign({}, prev, { error: e.message }) : estadoVacio_(exp, hoy, e.message);
     }
     estados.push(estado);
   });
+  if (abortar) { log_('ERROR', '', 'Corrida abortada, no se guarda nada: ' + abortar); marcarFallo_(); return; }
   if (maestro.activos.length && errores === maestro.activos.length) { log_('ERROR', '', 'Fallaron todas las consultas, no se guarda nada'); marcarFallo_(); return; }
 
   // 4. Guardar movimientos y recalcular estadísticas + proyección
@@ -84,14 +95,15 @@ function mapaCanon_(ssD) {
   return m;
 }
 
+// Actualiza mediana/casos en todas las filas cuyo nombre canónico coincide; si la oficina no existe, la crea.
 function guardarOficinas_(ssD, stats) {
-  var filas = leerHoja_(ssD, 'OFICINAS'), porApi = {};
-  filas.forEach(function (o) { porApi[normOficina(o.nombre_api)] = o; });
+  var filas = leerHoja_(ssD, 'OFICINAS'), porCanon = {};
+  filas.forEach(function (o) { var c = normOficina(o.nombre_canonico || o.nombre_api); (porCanon[c] = porCanon[c] || []).push(o); });
   Object.keys(stats).forEach(function (canon) {
-    var fila = porApi[canon] || (porApi[canon] = { nombre_api: canon, nombre_canonico: canon });
-    fila.mediana_dias = stats[canon].mediana_dias; fila.casos = stats[canon].casos;
+    if (!porCanon[canon]) { var nueva = { nombre_api: canon, nombre_canonico: canon }; filas.push(nueva); porCanon[canon] = [nueva]; }
+    porCanon[canon].forEach(function (f) { f.mediana_dias = stats[canon].mediana_dias; f.casos = stats[canon].casos; });
   });
-  reemplazarHoja_(ssD, 'OFICINAS', Object.keys(porApi).map(function (k) { return porApi[k]; }));
+  reemplazarHoja_(ssD, 'OFICINAS', filas);
 }
 
 function marcarFallo_() {

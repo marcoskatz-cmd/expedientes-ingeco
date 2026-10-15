@@ -43,10 +43,14 @@ function leerConfig_() {
 /** Setup, una sola vez: crea la planilla de datos con las 7 hojas. Luego guardar su id en SHEET_DATOS. */
 function crearPlanillaDatos() {
   var ss = SpreadsheetApp.create('Expedientes INGECO - Datos');
+  ss.setSpreadsheetLocale('es_AR');
+  ss.setSpreadsheetTimeZone('America/Argentina/Tucuman');
   Object.keys(CFG.HOJAS).forEach(function (n) {
     var h = ss.insertSheet(n);
     h.getRange(1, 1, 1, CFG.HOJAS[n].length).setValues([CFG.HOJAS[n]]).setFontWeight('bold');
     h.setFrozenRows(1);
+    // Todo como texto plano: así "05/03/2026" o "5/2026" no se convierten en fechas y se leen tal cual se escribieron.
+    h.getRange(2, 1, h.getMaxRows() - 1, CFG.HOJAS[n].length).setNumberFormat('@');
   });
   ss.deleteSheet(ss.getSheets()[0]);
   ss.getSheetByName('CONFIG').getRange(2, 1, 2, 2).setValues([['umbral_dias_quieto', 10], ['mails_alerta', '']]);

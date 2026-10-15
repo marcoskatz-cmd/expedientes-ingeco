@@ -35,11 +35,24 @@ function compararEstado(previo, lectura, exp, hoy) {
   return { cambio: cambio, movimiento: movimiento, estado: estado };
 }
 
+// Estado previo sintético a partir del último movimiento de cada expediente (para la primera corrida
+// después de importar la trazabilidad, o si ESTADO_ACTUAL se vació).
+function previoDesdeMovimientos(movimientos) {
+  var out = {};
+  movimientos.forEach(function (m) {
+    var f = parseFecha(m.fecha_pase);
+    if (!f || !m.expediente) return;
+    var prev = out[m.expediente];
+    if (!prev || parseFecha(prev.desde) <= f) out[m.expediente] = { oficina_actual: String(m.oficina || ''), desde: fmtFecha(f), alerta_enviada_en: '' };
+  });
+  return out;
+}
+
 function nuevoId() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 if (typeof module !== 'undefined') {
   var P_ = require('./Parse.js'); parseFecha = P_.parseFecha; fmtFecha = P_.fmtFecha; normOficina = P_.normOficina; diasHabiles = P_.diasHabiles;
-  module.exports = { interpretarRespuesta, compararEstado, nuevoId };
+  module.exports = { interpretarRespuesta, compararEstado, previoDesdeMovimientos, nuevoId };
 }

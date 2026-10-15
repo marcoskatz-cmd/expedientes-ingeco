@@ -57,3 +57,19 @@ test('proyectar tipo sin ruta cae a Contratación Directa y es débil', () => {
   assert.strictEqual(r.calidad_estimacion, 'debil');
   assert.strictEqual(r.dias_restantes_est, 4);
 });
+
+test('proyectar compara tipo de contrato sin tildes ni mayúsculas', () => {
+  const est = { tipo_contrato: 'CONTRATACION DIRECTA', oficina_actual: 'Secretaria de Obras', dias_quieto: 0 };
+  const stats = { 'SECRETARIA DE OBRAS': { mediana_dias: 10, casos: 6 }, 'TESORERIA GENERAL': { mediana_dias: 4, casos: 6 } };
+  const r = Pr.proyectar(est, rutas, stats, hoy, 5, {});
+  assert.strictEqual(r.calidad_estimacion, 'buena');
+  assert.strictEqual(r.dias_restantes_est, 14);
+});
+test('proyectar busca la mediana por el nombre canónico de la oficina de la ruta', () => {
+  const canon = { 'SECRETARIA DE OBRAS': 'SEC OBRAS' };
+  const stats = { 'SEC OBRAS': { mediana_dias: 10, casos: 6 }, 'TESORERIA GENERAL': { mediana_dias: 4, casos: 6 } };
+  const est = { tipo_contrato: 'Contratación Directa', oficina_actual: 'Secretaría de Obras', dias_quieto: 0 };
+  const r = Pr.proyectar(est, rutas, stats, hoy, 5, canon);
+  assert.strictEqual(r.calidad_estimacion, 'buena');
+  assert.strictEqual(r.dias_restantes_est, 14);
+});

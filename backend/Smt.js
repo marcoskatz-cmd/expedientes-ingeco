@@ -29,9 +29,13 @@ function ultimoCurso_(nro, anio, reintento) {
     payload: JSON.stringify({ anioexpediente: String(anio), nroexpediente: String(nro) + 'P' })
   });
   var code = r.getResponseCode();
-  if ((code === 401 || code === 403) && !reintento) {
+  if (code === 401 || code === 403) {
     CacheService.getScriptCache().remove(CACHE_TOKEN_);
-    return ultimoCurso_(nro, anio, true);
+    if (!reintento) return ultimoCurso_(nro, anio, true);
+    // Segundo 401 seguido: el login no sirve. Se aborta la corrida entera (ver Corrida.js).
+    var err = new Error('El portal rechazó el token aun después de volver a loguear (HTTP ' + code + ')');
+    err.esAuth = true;
+    throw err;
   }
   var body = null;
   try { body = JSON.parse(r.getContentText() || 'null'); } catch (e) { body = null; }
