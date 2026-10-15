@@ -1,4 +1,23 @@
-// Service worker mínimo: sin caché HTTP (igual que app-ingeco). Solo para que la PWA sea instalable.
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', () => {});
+// Service worker: guarda los archivos del sistema para que abra al instante y funcione aunque la señal sea mala.
+// Estrategia: devuelve lo guardado y, en paralelo, baja la versión nueva para la próxima vez.
+// Las llamadas a la API (script.google.com) no se guardan acá: eso lo maneja la app con localStorage.
+const CACHE = 'expedientes-v9';
+const ARCHIVOS = ['./', 'index.html', 'app.js?v=9', 'estilos.css?v=9', 'ayuda.html', 'manifest.webmanifest', 'icono.svg'];
+
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS).catch(() => {})).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  e.respondWith(
+    caches.open(CACHE).then(async c => {
+      const guardado = await c.match(e.request, { ignoreSearch: false });
+      const red = fetch(e.request).then(r => { if (r && r.ok) c.put(e.request, r.clone()); return r; }).catch(() => null);
+      return guardado || (await red) || new Response('Sin conexión', { status: 503 });
+    })
+  );
+});
