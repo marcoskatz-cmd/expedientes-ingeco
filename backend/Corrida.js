@@ -26,7 +26,7 @@ function correr_(hoy) {
   leerHoja_(ssD, 'ESTADO_ACTUAL').forEach(function (e) { previos[String(e.expediente)] = e; });
 
   // 3. Consultar
-  var movimientos = [], estados = [], errores = 0, abortar = null;
+  var movimientos = [], estados = [], errores = 0, abortar = null, avisosMov = [];
   try { tokenSmt_(); } catch (e) { log_('ERROR', '', 'No se pudo entrar al portal del municipio: ' + e.message); marcarFallo_(); return; }
 
   maestro.activos.forEach(function (exp) {
@@ -40,7 +40,14 @@ function correr_(hoy) {
         estado = conPrevio_(estadoVacio_(exp, hoy, lect.motivo), prev, hoy);
       } else {
         var c = compararEstado(prev, lect, exp, hoy);
-        if (c.movimiento) movimientos.push(c.movimiento);
+        if (c.movimiento) {
+          movimientos.push(c.movimiento);
+          avisosMov.push({
+            id: c.movimiento.id, expediente: exp.clave,
+            titulo: 'Expediente ' + exp.clave + ' pasó a ' + c.movimiento.oficina,
+            cuerpo: (exp.nombre || '') + (prev && prev.oficina_actual ? '. Estaba en ' + prev.oficina_actual + (c.movimiento.dias_en_oficina_anterior !== '' && c.movimiento.dias_en_oficina_anterior !== undefined ? ' (' + c.movimiento.dias_en_oficina_anterior + ' días hábiles)' : '') : '. Primer movimiento registrado') + (c.movimiento.descripcion_api ? '. ' + c.movimiento.descripcion_api : '') + (exp.monto ? '. Monto $' + Number(exp.monto).toLocaleString('es-AR') : '')
+          });
+        }
         estado = Object.assign({}, prev || {}, c.estado);
         if (c.cambio) escribirEnMaestro_(raw.hoja, raw.encabezados, exp.fila, lect, hoy);
       }
@@ -61,6 +68,8 @@ function correr_(hoy) {
   var cerrados = cerrarCobrados(enSeguimiento, maestro.cobradosClaves, hoy);
   cerrados.forEach(function (m) { log_('INFO', m.expediente, 'Cobrado: ' + m.dias_en_oficina_anterior + ' días hábiles en ' + enSeguimiento[m.expediente].oficina_actual); });
   agregarFilas_(ssD, 'MOVIMIENTOS', movimientos.concat(cerrados));
+  cerrados.forEach(function (m) { var e = enSeguimiento[m.expediente] || {}; avisosMov.push({ id: m.id, expediente: m.expediente, titulo: 'Expediente ' + m.expediente + ' cobrado', cuerpo: (e.nombre_obra || '') + '. ' + m.dias_en_oficina_anterior + ' días hábiles en ' + (e.oficina_actual || '') + (e.monto ? '. Monto $' + Number(e.monto).toLocaleString('es-AR') : '') }); });
+  try { avisarMovimientos_(avisosMov); } catch (e) { log_('ERROR', '', 'avisos de movimientos: ' + e.message); }
   var todosMovs = leerHoja_(ssD, 'MOVIMIENTOS');
   var mapaCanon = mapaCanon_(ssD);
   var stats = medianasPorOficina(todosMovs, mapaCanon);
