@@ -228,8 +228,9 @@ async function renderStats() {
 }
 
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => activar(b.dataset.v));
-$('#btn-refresh').onclick = async () => { const b = $('#btn-refresh'); b.disabled = true; b.textContent = 'Actualizando…'; await cargar(); b.disabled = false; b.textContent = '↻ Actualizar'; };
-if (window.INGECO_USUARIO && window.INGECO_USUARIO.es_admin) {
+const btnR = $('#btn-refresh');
+if (btnR) btnR.onclick = async () => { const b = btnR; b.disabled = true; b.textContent = 'Actualizando…'; await cargar(); b.disabled = false; b.textContent = '↻ Actualizar'; };
+if (window.INGECO_USUARIO && window.INGECO_USUARIO.es_admin && $('#btn-bot')) {
   const bb = $('#btn-bot'); bb.hidden = false;
   bb.onclick = async () => {
     bb.disabled = true; bb.textContent = 'Consultando al municipio… (unos minutos)';
