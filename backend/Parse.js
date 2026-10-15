@@ -2,7 +2,7 @@
 
 function parseExpediente(texto) {
   if (typeof texto !== 'string') return null;
-  var m = texto.trim().match(/^(\d{1,7})\s*\/\s*(\d{2}|\d{4})$/);
+  var m = texto.trim().match(/^(\d{1,7})\s*\/\s*(\d{4}|\d{2})$/);
   if (!m) return null;
   var anio = m[2].length === 2 ? '20' + m[2] : m[2];
   return { nro: m[1], anio: anio, clave: m[1] + '/' + anio };
@@ -12,7 +12,7 @@ function parseFecha(x) {
   if (x instanceof Date) return isNaN(x.getTime()) ? null : new Date(x.getFullYear(), x.getMonth(), x.getDate());
   if (typeof x !== 'string' || !x.trim()) return null;
   var s = x.trim(), d, m, y, mm;
-  if ((mm = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})/))) {
+  if ((mm = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})/))) {
     d = +mm[1]; m = +mm[2] - 1; y = mm[3].length === 2 ? 2000 + +mm[3] : +mm[3];
   } else if ((mm = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) {
     y = +mm[1]; m = +mm[2] - 1; d = +mm[3];
