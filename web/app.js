@@ -69,7 +69,6 @@ function renderTablero() {
   const quietos = act.filter(e => Number(e.dias_quieto) > DATA.umbral).sort((a, b) => Number(b.dias_quieto) - Number(a.dias_quieto));
   const total = act.reduce((s, e) => s + Number(e.monto), 0);
   const proxList = act.filter(e => num(e.dias_restantes_est) != null).sort((a, b) => Number(a.dias_restantes_est) - Number(b.dias_restantes_est));
-  const prox30 = proxList.filter(e => Number(e.dias_restantes_est) <= 22);
   const sinDato = DATA.estados.filter(e => !e.oficina_actual);
   const sinMonto = act.filter(e => !Number(e.monto)).length;
   const enCobro = act.filter(e => e.etapa === 'Cobro');
@@ -78,11 +77,10 @@ function renderTablero() {
       <div class="tile click" data-ir="{}"><small>A cobrar</small><b>${pesos(total)}</b><span>${act.length} expedientes${sinMonto ? ' · ' + sinMonto + ' sin monto cargado' : ''}</span></div>
       <div class="tile click ${quietos.length ? 'ambar' : ''}" data-ir='{"quietos":true}'><small>Quietos más de ${n(DATA.umbral)} días hábiles</small><b>${quietos.length}</b><span>${pesos(quietos.reduce((s, e) => s + Number(e.monto), 0))}</span></div>
       <div class="tile click teal" data-ir='{"etapa":"Cobro"}'><small>En Tesorería (por cobrar)</small><b>${enCobro.length}</b><span>${pesos(enCobro.reduce((s, e) => s + Number(e.monto), 0))}</span></div>
-      <div class="tile teal"><small>Cobro estimado en 30 días</small><b>${pesos(prox30.reduce((s, e) => s + Number(e.monto), 0))}</b><span>${prox30.length} expedientes</span></div>
       ${sinDato.length ? `<div class="tile"><small>Sin dato del municipio</small><b>${sinDato.length}</b><span>no encontrados o con error</span></div>` : ''}
     </section>
     <div class="dos">
-      <div class="card"><h2>Próximos cobros estimados</h2>${miniLista(proxList.slice(0, 8), e => `<b>${pesos(e.monto)}</b><br><small>${n(e.fecha_cobro_est)} · ~${n(e.dias_restantes_est)} d${e.calidad_estimacion === 'debil' ? ' · débil' : ''}</small>`)}</div>
+      <div class="card"><h2>Próximos cobros estimados</h2>${miniLista(proxList.slice(0, 8), e => `<b>${pesos(e.monto)}</b><br><small>${n(e.fecha_cobro_est)} · ~${n(e.dias_restantes_est)} d${e.calidad_estimacion === 'debil' ? ' (débil)' : ''}</small>`)}</div>
       <div class="card"><h2>Más tiempo quietos</h2>${miniLista(quietos.slice(0, 8), e => `<b>${n(e.dias_quieto)} días</b><br><small>${pesos(e.monto)}</small>`)}</div>
       <div class="card"><h2>Por etapa</h2>${barras(porEtapa, total, 'etapa')}</div>
       <div class="card"><h2>Por oficina</h2>${barras(porOficina, total, 'oficina')}</div>
