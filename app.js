@@ -228,5 +228,15 @@ async function renderStats() {
 }
 
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => activar(b.dataset.v));
+$('#btn-refresh').onclick = async () => { const b = $('#btn-refresh'); b.disabled = true; b.textContent = 'Actualizando…'; await cargar(); b.disabled = false; b.textContent = '↻ Actualizar'; };
+if (window.INGECO_USUARIO && window.INGECO_USUARIO.es_admin) {
+  const bb = $('#btn-bot'); bb.hidden = false;
+  bb.onclick = async () => {
+    bb.disabled = true; bb.textContent = 'Consultando al municipio… (unos minutos)';
+    try { await api('forzar_corrida'); await cargar(); bb.textContent = 'Listo, datos frescos'; }
+    catch (e) { bb.textContent = 'No se pudo: ' + e.message; }
+    setTimeout(() => { bb.disabled = false; bb.textContent = 'Consultar municipio ahora'; }, 4000);
+  };
+}
 if (!window.INGECO_USUARIO && !DEV) sinAcceso(); else { cargar(); setInterval(cargar, 5 * 60 * 1000); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

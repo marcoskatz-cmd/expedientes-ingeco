@@ -101,3 +101,8 @@ table.tabla td.obra small { color: var(--gris); display: block; }
 .pasos .acum { text-align: right; color: var(--gris); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .leyenda { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--gris); margin-top: 6px; }
 .leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+
+.acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.acciones button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--teal); background: #fff; color: var(--teal); cursor: pointer; }
+.acciones button:disabled { opacity: .5; cursor: wait; }
+#btn-bot { border-color: var(--borde); color: var(--gris); }
