@@ -26,14 +26,34 @@ const fechaKey = s => { const m = String(s || '').match(/(\d{2})\/(\d{2})\/(\d{4
 
 function sinAcceso() { $('#vista').innerHTML = '<p class="vacio">Abrí este sistema desde la app INGECO.</p>'; }
 
+const CACHE_KEY = 'expedientes_estado_v1';
+function guardarCache(d) { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), d })); } catch (e) { } }
+function leerCache() { try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); return c && c.d ? c : null; } catch (e) { return null; } }
+function prepararEstados(d) { d.estados.forEach(e => { e.ofKey = normOf(e.oficina_actual); e.ofNombre = e.oficina_actual ? bonitoOf(e.oficina_actual) : ''; }); return d; }
+
+// Primero muestra lo último que se vio (guardado en este dispositivo) y después trae lo nuevo.
+function mostrarCacheSiHay() {
+  const c = leerCache();
+  if (!c) return false;
+  DATA = prepararEstados(c.d);
+  $('#corrida').textContent = 'Mostrando datos guardados, actualizando…';
+  render();
+  return true;
+}
+
 async function cargar() {
   try {
-    DATA = await api('estado');
-    DATA.estados.forEach(e => { e.ofKey = normOf(e.oficina_actual); e.ofNombre = e.oficina_actual ? bonitoOf(e.oficina_actual) : ''; });
+    const nuevo = await api('estado');
+    guardarCache(nuevo);
+    DATA = nuevo;
+    prepararEstados(DATA);
     $('#corrida').textContent = DATA.ultima_corrida ? 'Última consulta ' + DATA.ultima_corrida.replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, '$3/$2 $4:$5') : '';
     $('#avisos').innerHTML = DATA.avisos.filter(a => a.nivel === 'ERROR').map(a => `<div class="aviso">${esc(a.mensaje)}</div>`).join('');
     render();
-  } catch (e) { $('#vista').innerHTML = `<p class="vacio">No pude traer los datos: ${esc(e.message)}. Probá de nuevo en un rato.</p>`; }
+  } catch (e) {
+    if (DATA) { $('#corrida').textContent = 'Sin conexión: mostrando datos guardados'; }
+    else $('#vista').innerHTML = `<p class="vacio">No pude traer los datos: ${esc(e.message)}. Probá de nuevo en un rato.</p>`;
+  }
 }
 
 function render() {
@@ -44,7 +64,18 @@ function render() {
 }
 
 function irALista(filtros) { Object.assign(F, { q: '', etapa: '', oficina: '', quietos: false }, filtros || {}); activar('lista'); }
-function activar(v) { VISTA = v; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('activo', x.dataset.v === v)); render(); window.scrollTo(0, 0); }
+function activar(v, sinHistorial) {
+  VISTA = v;
+  document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('activo', x.dataset.v === v));
+  if (!sinHistorial) history.pushState({ v }, '', '#' + v);
+  render(); window.scrollTo(0, 0);
+}
+// Botón "atrás" del celular o del navegador: vuelve a la vista anterior dentro del sistema en vez de salir.
+window.addEventListener('popstate', ev => {
+  const st = ev.state || { v: 'tablero' };
+  if (st.v === 'ficha' && st.exp) ficha(st.exp, true); else activar(st.v || 'tablero', true);
+});
+history.replaceState({ v: 'tablero' }, '', '#tablero');
 
 function barras(obj, total, tipo) {
   const items = Object.entries(obj).sort((a, b) => b[1].monto - a[1].monto);
@@ -59,7 +90,7 @@ function enlazarBarras() {
 
 function miniLista(items, derecha) {
   if (!items.length) return '<p class="vacio">Nada por ahora</p>';
-  return '<ul class="mini">' + items.map(e => `<li data-exp="${esc(e.expediente)}"><div><b title="${esc(e.nombre_obra)}">${esc(e.nombre_obra)}</b><small>${esc(e.expediente)} · ${esc(e.ofNombre || 'sin dato')}</small></div><div class="num">${derecha(e)}</div></li>`).join('') + '</ul>';
+  return '<ul class="mini">' + items.map(e => `<li data-exp="${esc(e.expediente)}"><div><span class="exp">${esc(e.expediente)}</span><b title="${esc(e.nombre_obra)}">${esc(e.nombre_obra)}</b><small>${esc(e.ofNombre || 'sin dato')}</small></div><div class="num">${derecha(e)}</div></li>`).join('') + '</ul>';
 }
 
 function renderTablero() {
@@ -80,7 +111,7 @@ function renderTablero() {
     </section>
     <div class="uno">
       <div class="card"><h2>Por oficina</h2><p><small>Tocá una oficina para ver sus expedientes.</small></p>${porOficinaDesplegable(act, porOficina, total)}</div>
-      <div class="card"><h2>Más tiempo quietos</h2>${miniLista(quietos.slice(0, 8), e => `<b>${n(e.dias_quieto)} días</b><br><small>${pesos(e.monto)}</small>`)}</div>
+      <div class="card"><h2>Más tiempo quietos</h2>${miniLista(quietos.slice(0, 8), e => `<b>${n(e.dias_quieto)} días quieto</b><br><small>${pesos(e.monto)}</small>`)}</div>
     </div>`;
   document.querySelectorAll('.tile[data-ir]').forEach(t => t.onclick = () => irALista(JSON.parse(t.dataset.ir)));
   document.querySelectorAll('.mini li').forEach(li => li.onclick = () => ficha(li.dataset.exp));
@@ -96,7 +127,7 @@ function porOficinaDesplegable(act, porOficina, total) {
     const exps = act.filter(e => e.ofKey === k).sort((a, b) => Number(b.dias_quieto) - Number(a.dias_quieto));
     return `<div class="of">
       <div class="of-cab"><span class="flecha">▸</span><span class="nom">${esc(v.nombre)} <small>(${v.cant})</small></span><div class="barra"><i style="width:${total ? v.monto / total * 100 : 0}%"></i></div><b>${pesos(v.monto)}</b></div>
-      <ul class="of-det" hidden>${exps.map(e => `<li data-exp="${esc(e.expediente)}" class="${semaforo(e)}"><span class="nom" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra)}<small>${esc(e.expediente)} · desde ${n(e.desde)}</small></span><span class="dias"><span class="chip ${semaforo(e)}">${n(e.dias_quieto)} d</span></span><b>${pesos(e.monto)}</b></li>`).join('')}</ul>
+      <ul class="of-det" hidden>${exps.map(e => `<li data-exp="${esc(e.expediente)}" class="${semaforo(e)}"><span class="nom"><span class="exp">${esc(e.expediente)}</span><span class="obra" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra)}</span><small>desde ${n(e.desde)}</small></span><span class="dias"><span class="chip ${semaforo(e)}">${n(e.dias_quieto)} días</span></span><b>${pesos(e.monto)}</b></li>`).join('')}</ul>
     </div>`;
   }).join('');
 }
@@ -119,11 +150,12 @@ function renderLista() {
   const etapas = [...new Set(DATA.estados.map(e => e.etapa).filter(Boolean))].sort();
   const oficinas = {}; DATA.estados.forEach(e => { if (e.ofKey) oficinas[e.ofKey] = e.ofNombre; });
   const lista = filtrar();
-  const cols = [['nombre_obra', 'Obra'], ['monto', 'Monto'], ['oficina_actual', 'Oficina actual'], ['dias_quieto', 'Días ahí'], ['etapa', 'Etapa'], ['dias_restantes_est', 'Faltan (d. háb.)'], ['fecha_cobro_est', 'Cobro est.']];
+  const cols = [['expediente', 'Expediente'], ['nombre_obra', 'Obra'], ['monto', 'Monto'], ['oficina_actual', 'Oficina actual'], ['dias_quieto', 'Días ahí'], ['etapa', 'Etapa'], ['dias_restantes_est', 'Faltan (d. háb.)'], ['fecha_cobro_est', 'Cobro est.']];
   const th = cols.map(([k, t]) => `<th data-col="${k}" class="${F.orden === k ? 'orden' + (F.asc ? ' asc' : '') : ''}">${t}</th>`).join('');
   const proy = e => num(e.dias_restantes_est) != null ? `~${n(e.dias_restantes_est)}${e.calidad_estimacion === 'debil' ? ' <span class="chip debil">débil</span>' : ''}` : '';
   const filas = lista.map(e => `<tr class="item ${semaforo(e)}" data-exp="${esc(e.expediente)}">
-      <td class="obra">${esc(e.nombre_obra)}<small>${esc(e.expediente)} · ${esc(e.tipo_contrato)}${e.prioridad && e.prioridad !== 'Normal' ? ' · prioridad ' + esc(e.prioridad) : ''}</small></td>
+      <td class="num"><span class="exp">${esc(e.expediente)}</span></td>
+      <td class="obra">${esc(e.nombre_obra)}<small>${esc(e.tipo_contrato)}${e.prioridad && e.prioridad !== 'Normal' ? ' · prioridad ' + esc(e.prioridad) : ''}</small></td>
       <td class="num">${pesos(e.monto)}</td>
       <td>${e.oficina_actual ? esc(e.ofNombre) + '<br><small>desde ' + n(e.desde) + '</small>' : '<span class="chip">sin dato</span><br><small>' + esc(e.error) + '</small>'}</td>
       <td class="num">${e.oficina_actual ? `<span class="chip ${semaforo(e)}">${n(e.dias_quieto)}</span>` : ''}</td>
@@ -131,8 +163,8 @@ function renderLista() {
       <td class="num">${proy(e)}</td>
       <td class="num">${n(e.fecha_cobro_est)}</td></tr>`).join('');
   const cards = lista.map(e => `<li class="${semaforo(e)}" data-exp="${esc(e.expediente)}">
-      <b>${esc(e.nombre_obra)}</b><span>${esc(e.expediente)} · ${pesos(e.monto)}</span>
-      <span>${e.oficina_actual ? esc(e.ofNombre) + ' · ' + n(e.dias_quieto) + ' días' : 'Sin dato: ' + esc(e.error)}</span>
+      <span class="exp">${esc(e.expediente)}</span><b>${esc(e.nombre_obra)}</b><span>${pesos(e.monto)}</span>
+      <span>${e.oficina_actual ? esc(e.ofNombre) + ' · ' + n(e.dias_quieto) + ' días hábiles ahí' : 'Sin dato: ' + esc(e.error)}</span>
       <span>${num(e.dias_restantes_est) != null ? 'Faltan ~' + n(e.dias_restantes_est) + ' días hábiles (' + n(e.fecha_cobro_est) + ')' + (e.calidad_estimacion === 'debil' ? ' · estimación débil' : '') : esc(e.etapa || '')}</span></li>`).join('');
   $('#vista').innerHTML = `
     <div class="filtros">
@@ -142,18 +174,20 @@ function renderLista() {
       <label><input type="checkbox" id="f-quietos" ${F.quietos ? 'checked' : ''}> Solo quietos</label>
       <span class="chip">${lista.length} de ${DATA.estados.length} · ${pesos(lista.reduce((s, e) => s + Number(e.monto), 0))}</span>
     </div>
-    <table class="tabla"><thead><tr>${th}</tr></thead><tbody>${filas || '<tr><td colspan="7" class="vacio">Nada que mostrar</td></tr>'}</tbody></table>
+    <table class="tabla"><thead><tr>${th}</tr></thead><tbody>${filas || '<tr><td colspan="8" class="vacio">Nada que mostrar</td></tr>'}</tbody></table>
     <ul class="lista">${cards || '<li class="vacio">Nada que mostrar</li>'}</ul>`;
   const inp = $('#f-q');
   inp.oninput = ev => { F.q = ev.target.value; const pos = inp.selectionStart; renderLista(); const i2 = $('#f-q'); i2.focus(); i2.setSelectionRange(pos, pos); };
   $('#f-etapa').onchange = ev => { F.etapa = ev.target.value; renderLista(); };
   $('#f-of').onchange = ev => { F.oficina = ev.target.value; renderLista(); };
   $('#f-quietos').onchange = ev => { F.quietos = ev.target.checked; renderLista(); };
-  document.querySelectorAll('th[data-col]').forEach(t => t.onclick = () => { if (F.orden === t.dataset.col) F.asc = !F.asc; else { F.orden = t.dataset.col; F.asc = t.dataset.col === 'nombre_obra' || t.dataset.col === 'fecha_cobro_est'; } renderLista(); });
+  document.querySelectorAll('th[data-col]').forEach(t => t.onclick = () => { if (F.orden === t.dataset.col) F.asc = !F.asc; else { F.orden = t.dataset.col; F.asc = t.dataset.col === 'nombre_obra' || t.dataset.col === 'fecha_cobro_est' || t.dataset.col === 'expediente'; } renderLista(); });
   document.querySelectorAll('[data-exp]').forEach(el => el.onclick = () => ficha(el.dataset.exp));
 }
 
-async function ficha(exp) {
+async function ficha(exp, sinHistorial) {
+  if (!sinHistorial) history.pushState({ v: 'ficha', exp }, '', '#ficha');
+  window.scrollTo(0, 0);
   $('#vista').innerHTML = '<p class="vacio">Cargando…</p>';
   let f;
   try { f = await api('ficha', { expediente: exp }); } catch (e) { $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; return; }
@@ -162,6 +196,7 @@ async function ficha(exp) {
   const movs = f.movimientos.slice().sort((a, b) => fechaKey(a.fecha_pase).localeCompare(fechaKey(b.fecha_pase)));
   const sem = semaforo(e);
   $('#vista').innerHTML = `<button class="volver" id="volver">← Volver</button>
+    <p class="exp-grande">Expediente ${esc(e.expediente)}</p>
     <h2 style="margin-top:4px">${esc(e.nombre_obra)}</h2>
     <div class="ficha-grid">
       <div>
@@ -187,7 +222,7 @@ async function ficha(exp) {
           <input name="texto" placeholder="Qué pasó" required maxlength="500"><button>Agregar gestión</button></form><p id="okgest"></p>` : '<p class="vacio">Para cargar gestiones abrí desde la app INGECO.</p>'}
       </div>
     </div>`;
-  $('#volver').onclick = () => render();
+  $('#volver').onclick = () => history.back();
   const form = $('#fgest');
   if (form) form.onsubmit = async ev => {
     ev.preventDefault();
@@ -255,5 +290,5 @@ if (window.INGECO_USUARIO && window.INGECO_USUARIO.es_admin && $('#btn-bot')) {
     setTimeout(() => { bb.disabled = false; bb.textContent = 'Consultar municipio ahora'; }, 4000);
   };
 }
-if (!window.INGECO_USUARIO && !DEV) sinAcceso(); else { cargar(); setInterval(cargar, 5 * 60 * 1000); }
+if (!window.INGECO_USUARIO && !DEV) sinAcceso(); else { mostrarCacheSiHay(); cargar(); setInterval(cargar, 5 * 60 * 1000); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
