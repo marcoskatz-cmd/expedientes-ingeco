@@ -6,7 +6,7 @@ var BOOTSTRAP_SECRET_ = ''; // solo para el primer arranque; después el secreto
 function accionSetup_(accion, p) {
   var sec = setupSecret_();
   if (!sec || p.secreto !== sec) return { ok: false, error: 'Setup deshabilitado' };
-  var extra = accionSetupExtra_(accion, p) || accionSetupExtra2_(accion, p); if (extra) return extra;
+  var extra = accionSetupExtra_(accion, p) || accionSetupExtra2_(accion, p) || accionSetupMaestro_(accion, p) || accionSetupFormulas_(accion, p) || accionSetupArreglarMontos_(accion, p); if (extra) return extra;
   var ssD = ssDatos_();
   if (accion === 'setup_importar') {
     var out = {};
@@ -75,4 +75,40 @@ function accionSetupExtra2_(accion, p) {
     return { ok: true, filas: est.length };
   }
   return null;
+}
+
+function accionSetupMaestro_(accion, p) {
+  if (accion !== 'setup_maestro') return null;
+  var raw = leerHojaRaw_(ssMaestro_(), CFG.HOJA_MAESTRO);
+  var enc = raw.encabezados, iE = enc.indexOf('Estado $'), iM = enc.indexOf('Monto'), iT = enc.indexOf('Monto Total'), iX = enc.indexOf('Expediente'), iN = enc.indexOf('Nombre Obra');
+  var rg = raw.hoja.getRange(2, 1, raw.hoja.getLastRow() - 1, enc.length), filas = rg.getDisplayValues(), vals = rg.getValues();
+  return { ok: true, filas: filas.map(function (r, i) { return [i + 2, r[iX], String(r[iN]).slice(0, 40), JSON.stringify(vals[i][iE]), r[iM], typeof vals[i][iM]]; }).filter(function (r) { return /cobrar/i.test(r[3]); }) };
+}
+
+function accionSetupFormulas_(accion, p) {
+  if (accion !== 'setup_formulas') return null;
+  var h = ssMaestro_().getSheetByName(String(p.hoja));
+  if (!h) return { ok: false, error: 'no existe la hoja' };
+  var rg = h.getDataRange();
+  var f = rg.getFormulas(), v = rg.getDisplayValues(), out = [];
+  f.forEach(function (fila, i) { fila.forEach(function (c, j) { if (c) out.push({ celda: String.fromCharCode(65 + j) + (i + 1), formula: c, valor: v[i][j] }); }); });
+  return { ok: true, formulas: out };
+}
+
+// Convierte a número los montos del maestro que quedaron como texto (SUMIF los ignora). Solo filas "A Cobrar".
+function accionSetupArreglarMontos_(accion, p) {
+  if (accion !== 'setup_arreglar_montos') return null;
+  var raw = leerHojaRaw_(ssMaestro_(), CFG.HOJA_MAESTRO), enc = raw.encabezados;
+  var iE = enc.indexOf('Estado $'), iM = enc.indexOf('Monto');
+  var rg = raw.hoja.getRange(2, 1, raw.hoja.getLastRow() - 1, enc.length), vals = rg.getValues(), cambios = [];
+  vals.forEach(function (r, i) {
+    if (!/cobrar/i.test(String(r[iE])) || typeof r[iM] !== 'string' || !r[iM].trim()) return;
+    var n = parseMonto(r[iM]);
+    if (!n) return;
+    raw.hoja.getRange(i + 2, iM + 1).setValue(n).setNumberFormat('"$"#,##0.00');
+    cambios.push([i + 2, r[iM], n]);
+  });
+  var det = ssMaestro_().getSheetByName('Detalle Municipio');
+  SpreadsheetApp.flush();
+  return { ok: true, cambios: cambios, detalle_C4: det ? det.getRange('C4').getDisplayValue() : null };
 }
