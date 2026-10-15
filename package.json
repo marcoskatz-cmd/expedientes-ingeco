@@ -1,0 +1,5 @@
+{
+  "name": "expedientes-ingeco",
+  "private": true,
+  "scripts": { "test": "node --test" }
+}
