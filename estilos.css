@@ -22,6 +22,7 @@ main { padding: 0 16px 32px; max-width: 1400px; margin: 0 auto; }
 .tile.teal { border-color: var(--teal); background: var(--teal-claro); }
 .tile.ambar { border-color: var(--ambar); background: var(--ambar-claro); }
 .dos { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.uno { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 12px; }
 @media (min-width: 900px) { .dos { grid-template-columns: 1fr 1fr; } }
 .card { background: #fff; border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; }
 .card h2 { margin-top: 0; }
