@@ -195,13 +195,26 @@ async function renderStats() {
   const max = Math.max(1, ...ofs.map(o => Number(o.mediana_dias)));
   const act = DATA.estados.filter(e => e.oficina_actual);
   const porOf = {}; act.forEach(e => acum(porOf, e.ofKey, e.ofNombre, e));
+  // Expediente tipo: la ruta general paso a paso, con la mediana real de cada oficina (o el valor por defecto si hay pocos casos).
+  const statsOf = {}; s.oficinas.forEach(o => { statsOf[normOf(o.nombre_canonico)] = o; });
+  const ruta = (s.rutas || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
+  const pasos = ruta.map(r => { const st = statsOf[normOf(r.oficina)]; const ok = st && Number(st.casos) >= (s.min_casos || 5); return { oficina: bonitoOf(r.oficina), etapa: r.etapa, dias: ok ? Number(st.mediana_dias) : Number(r.dias_default) || 0, casos: st ? Number(st.casos) : 0, debil: !ok }; });
+  const totalTipo = pasos.reduce((a, p) => a + p.dias, 0);
+  let acumD = 0;
+  const lineaHtml = pasos.length ? `
+    <div class="linea">${pasos.map(p => `<div class="seg ${esc(p.etapa)}${p.debil ? ' debil' : ''}" style="flex:${Math.max(p.dias, 0.6)}" title="${esc(p.oficina)}: ${n(p.dias)} días hábiles">${p.dias >= 2 ? n(p.dias) + ' d' : ''}</div>`).join('')}</div>
+    <div class="leyenda"><span><i style="background:#5eead4"></i>Preliminar</span><span><i style="background:#2dd4bf"></i>Media</span><span><i style="background:var(--teal)"></i>Final</span><span><i style="background:#115e59"></i>Cobro</span><span><i style="background:#999;background-image:repeating-linear-gradient(45deg,transparent 0 3px,#fff 3px 5px)"></i>rayado: pocos casos, valor por defecto</span></div>
+    <ul class="pasos">${pasos.map((p, i) => { acumD += p.dias; return `<li><span class="n">${i + 1}.</span><span>${esc(p.oficina)} <small class="n">${esc(p.etapa)}${p.casos ? ' · ' + n(p.casos) + ' casos' : ' · sin casos'}</small></span><span class="d"><b>${n(p.dias)}</b> d</span><span class="acum">día ${n(acumD)}</span></li>`; }).join('')}</ul>
+    <p><small>De punta a punta, un expediente tipo tarda <b>${n(totalTipo)} días hábiles</b> (unas ${n(Math.round(totalTipo / 5))} semanas). Se puede editar la ruta en la hoja RUTAS de la planilla de datos.</small></p>` : '<p class="vacio">No hay ruta cargada.</p>';
   $('#vista').innerHTML = `
     <section class="tiles">
-      <div class="tile"><small>Inicio → Tesorería (mediana)</small><b>${n(s.total.mediana)} días hábiles</b><span>${n(s.total.casos)} expedientes completos · p25 ${n(s.total.p25)} · p75 ${n(s.total.p75)}</span></div>
+      <div class="tile"><small>Expediente tipo (ruta)</small><b>${n(totalTipo)} días hábiles</b><span>sumando la mediana de cada oficina</span></div>
+      <div class="tile"><small>Inicio → Tesorería (real, mediana)</small><b>${n(s.total.mediana)} días hábiles</b><span>${n(s.total.casos)} expedientes completos · p25 ${n(s.total.p25)} · p75 ${n(s.total.p75)}</span></div>
       <div class="tile"><small>Oficina más lenta</small><b>${ofs[0] ? esc(bonitoOf(ofs[0].nombre_canonico)) : '—'}</b><span>${ofs[0] ? n(ofs[0].mediana_dias) + ' días de mediana' : ''}</span></div>
       <div class="tile"><small>Expedientes activos</small><b>${act.length}</b><span>en ${Object.keys(porOf).length} oficinas</span></div>
     </section>
-    <div class="dos">
+    <div class="card" style="margin-top:16px"><h2>Recorrido del expediente tipo, de principio a fin</h2>${lineaHtml}</div>
+    <div class="dos" style="margin-top:16px">
       <div class="card"><h2>Días hábiles por oficina (mediana)</h2>
         <div class="barras">${ofs.map(o => `<div class="fila"><span title="${esc(bonitoOf(o.nombre_canonico))}">${esc(bonitoOf(o.nombre_canonico))}</span><div class="barra"><i style="width:${Number(o.mediana_dias) / max * 100}%"></i></div><b>${n(o.mediana_dias)} d · ${n(o.casos)} casos</b></div>`).join('') || '<p class="vacio">Todavía no hay historia suficiente.</p>'}</div>
         <p><small>Con menos de 5 casos la oficina no se usa para proyectar y la estimación queda marcada como débil.</small></p>

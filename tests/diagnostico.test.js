@@ -41,3 +41,18 @@ test('maestroAExpedientes usa Monto Total cuando Monto está vacío o en 0', () 
   const r = D.maestroAExpedientes(objs, CFG.COLS_MAESTRO);
   assert.deepStrictEqual(r.activos.map(a => a.monto), [1500.5, 800, 10]);
 });
+test('maestroAExpedientes solo toma Estado $ "A Cobrar"; TOTAL, vacío y otros quedan afuera', () => {
+  const base = { 'Nombre Obra': 'X', 'Tipo de contrato': 'x', Monto: 1 };
+  const objs = [
+    Object.assign({}, base, { Expediente: '1/2026', 'Estado $': 'A Cobrar', __fila: 2 }),
+    Object.assign({}, base, { Expediente: '2/2026', 'Estado $': ' a cobrar ', __fila: 3 }),
+    Object.assign({}, base, { Expediente: '3/2026', 'Estado $': 'TOTAL', __fila: 4 }),
+    Object.assign({}, base, { Expediente: '4/2026', 'Estado $': '', __fila: 5 }),
+    Object.assign({}, base, { Expediente: '5/2026', 'Estado $': 'Cobrada', __fila: 6 })
+  ];
+  const r = D.maestroAExpedientes(objs, CFG.COLS_MAESTRO);
+  assert.deepStrictEqual(r.activos.map(a => a.clave), ['1/2026', '2/2026']);
+  assert.strictEqual(r.cobrados, 1);
+  assert.strictEqual(r.otros, 2);
+  assert.strictEqual(r.sinExpediente.length, 0);
+});

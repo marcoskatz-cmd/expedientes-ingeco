@@ -34,14 +34,17 @@ function parseMonto(v) {
 }
 
 function esCobrado_(estado$) { return /^cobrad[oa]/i.test(String(estado$ || '').trim()); }
+// Solo se siguen los que dicen "A Cobrar". Filas TOTAL, vacías u otros estados quedan afuera (pedido de Marcos, 15-oct-2026).
+function esACobrar_(estado$) { return /^a\s*cobrar/i.test(String(estado$ || '').trim()); }
 
 function maestroAExpedientes(objs, cols) {
-  var activos = [], sinExpediente = [], cobrados = 0;
+  var activos = [], sinExpediente = [], cobrados = 0, otros = 0;
   objs.forEach(function (o) {
     var nombre = String(o[cols.nombre] || '').trim();
     var texto = String(o[cols.expediente] || '').trim();
     if (!nombre && !texto) return;
     if (esCobrado_(o[cols.estado$])) { cobrados++; return; }
+    if (!esACobrar_(o[cols.estado$])) { otros++; return; }
     var e = parseExpediente(texto);
     if (!e) { sinExpediente.push({ nombre: nombre, texto: texto, fila: o.__fila }); return; }
     activos.push({
@@ -54,7 +57,7 @@ function maestroAExpedientes(objs, cols) {
       fila: o.__fila
     });
   });
-  return { activos: activos, sinExpediente: sinExpediente, cobrados: cobrados };
+  return { activos: activos, sinExpediente: sinExpediente, cobrados: cobrados, otros: otros };
 }
 
 if (typeof module !== 'undefined') {

@@ -79,10 +79,25 @@ table.tabla td.obra small { color: var(--gris); display: block; }
 #fgest button:disabled { background: var(--gris); }
 #fgest select, #fgest input { font: inherit; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; }
 .mini { list-style: none; padding: 0; margin: 0; }
-.mini li { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--borde); font-size: 13px; cursor: pointer; }
+.mini li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--borde); font-size: 13px; cursor: pointer; }
 .mini li:last-child { border-bottom: none; }
 .mini li b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini li small { color: var(--gris); }
-.mini li .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mini li .num { text-align: right; white-space: normal; max-width: 45%; font-variant-numeric: tabular-nums; }
 .ayuda { padding: 16px; max-width: 640px; margin: 0 auto; line-height: 1.5; }
 .ayuda .chip { color: #fff; }
+/* Línea de tiempo del expediente tipo */
+.linea { display: flex; width: 100%; height: 34px; border-radius: 8px; overflow: hidden; margin: 12px 0 4px; }
+.linea .seg { position: relative; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 600; border-right: 2px solid #fff; min-width: 6px; }
+.linea .seg.Preliminar { background: #5eead4; color: #134e4a; }
+.linea .seg.Media { background: #2dd4bf; color: #134e4a; }
+.linea .seg.Final { background: var(--teal); }
+.linea .seg.Cobro { background: #115e59; }
+.linea .seg.debil { background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.35) 6px 10px); }
+.pasos { list-style: none; padding: 0; margin: 8px 0 0; display: grid; grid-template-columns: auto 1fr auto auto; gap: 4px 12px; font-size: 13px; align-items: baseline; }
+.pasos li { display: contents; }
+.pasos .n { color: var(--gris); }
+.pasos .d { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pasos .acum { text-align: right; color: var(--gris); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--gris); margin-top: 6px; }
+.leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
