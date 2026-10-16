@@ -40,7 +40,21 @@ function accionEstado_() {
   var avisos = log.filter(function (l) { return l.corrida === ultimaCorrida && (l.nivel === 'ERROR' || l.nivel === 'AVISO'); })
     .map(function (l) { return { nivel: l.nivel, expediente: l.expediente, mensaje: l.mensaje }; });
   var cfg = leerConfig_();
-  return { ok: true, estados: estados, avisos: avisos, umbral: Number(cfg.umbral_dias_quieto) || CFG.UMBRAL_DEFAULT, ultima_corrida: ultimaCorrida };
+  return { ok: true, estados: estados, avisos: avisos, umbral: Number(cfg.umbral_dias_quieto) || CFG.UMBRAL_DEFAULT, ultima_corrida: ultimaCorrida, ultimos_movimientos: ultimosMovimientos_(ssD, estados, 15) };
+}
+
+// Últimos pases detectados por el bot (no la historia importada), del más nuevo al más viejo, con el nombre de la obra.
+function ultimosMovimientos_(ssD, estados, n) {
+  var nombres = {};
+  estados.forEach(function (e) { nombres[String(e.expediente)] = e.nombre_obra; });
+  var movs = leerHoja_(ssD, 'MOVIMIENTOS').filter(function (m) { return m.origen === 'bot'; });
+  var k = function (m) { return fechaClave_(m.detectado_en) + fechaClave_(m.fecha_pase) + String(m.id); };
+  movs.sort(function (a, b) { return k(b) < k(a) ? -1 : 1; });
+  return movs.slice(0, n).map(function (m) {
+    return { id: m.id, expediente: String(m.expediente), nombre_obra: nombres[String(m.expediente)] || '', fecha_pase: m.fecha_pase, detectado_en: m.detectado_en, oficina: m.oficina, comentarios: m.descripcion_api, dias_en_oficina_anterior: m.dias_en_oficina_anterior };
+  });
+}
+function fechaClave_(f) { var d = parseFecha(f); return d ? Utilities.formatDate(d, 'America/Argentina/Tucuman', 'yyyyMMdd') : '00000000';
 }
 
 function accionFicha_(expediente) {

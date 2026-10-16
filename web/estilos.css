@@ -135,3 +135,16 @@ table.tabla td.obra small { color: var(--gris); display: block; }
 table.tabla td .exp { font-size: 17px; }
 .exp-grande { font-size: 22px; font-weight: 700; color: var(--teal); margin: 4px 0 0; }
 .of-det li .chip { font-size: 15px; }
+
+/* Últimos movimientos */
+.movs { list-style: none; padding: 0; margin: 0; }
+.movs li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borde); cursor: pointer; font-size: 16px; }
+.movs li:last-child { border-bottom: none; }
+.movs li:hover { background: #f9fafb; }
+.movs .fecha { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--texto); padding-top: 2px; }
+.movs .que { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.movs .obra { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.movs .paso { color: var(--teal); }
+.movs li.cobrado .paso { color: #115e59; font-weight: 700; }
+.movs .coment { color: var(--gris); font-size: 14px; }
+@media (max-width: 600px) { .movs li { grid-template-columns: 1fr; gap: 2px; } }
