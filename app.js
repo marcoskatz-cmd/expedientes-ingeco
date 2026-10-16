@@ -110,6 +110,7 @@ function renderTablero() {
       ${sinDato.length ? `<div class="tile"><small>Sin dato del municipio</small><b>${sinDato.length}</b><span>no encontrados o con error</span></div>` : ''}
     </section>
     <div class="uno">
+      <div class="card"><h2>Últimos movimientos</h2><p><small>Los pases que detectó el sistema, del más reciente al más viejo.</small></p>${ultimosMovimientosHtml(DATA.ultimos_movimientos || [])}</div>
       <div class="card"><h2>Por oficina</h2><p><small>Tocá una oficina para ver sus expedientes.</small></p>${porOficinaDesplegable(act, porOficina, total)}</div>
       <div class="card"><h2>Más tiempo quietos</h2>${miniLista(quietos.slice(0, 8), e => `<b>${n(e.dias_quieto)} días quieto</b><br><small>${pesos(e.monto)}</small>`)}</div>
     </div>`;
@@ -117,6 +118,20 @@ function renderTablero() {
   document.querySelectorAll('.mini li').forEach(li => li.onclick = () => ficha(li.dataset.exp));
   document.querySelectorAll('.of-cab').forEach(c => c.onclick = () => { const d = c.nextElementSibling; d.hidden = !d.hidden; c.classList.toggle('abierto', !d.hidden); });
   document.querySelectorAll('.of-det li').forEach(li => li.onclick = ev => { ev.stopPropagation(); ficha(li.dataset.exp); });
+  document.querySelectorAll('.movs li').forEach(li => li.onclick = () => ficha(li.dataset.exp));
+}
+
+function ultimosMovimientosHtml(movs) {
+  if (!movs.length) return '<p class="vacio">Todavía no hay movimientos detectados. El sistema consulta al municipio cada hora.</p>';
+  return '<ul class="movs">' + movs.map(m => {
+    const cobrado = normOf(m.oficina) === 'COBRADO';
+    const dias = m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ` <small>(estuvo ${n(m.dias_en_oficina_anterior)} días hábiles en la anterior)</small>` : '';
+    return `<li data-exp="${esc(m.expediente)}" class="${cobrado ? 'cobrado' : ''}">
+      <span class="fecha">${n(m.fecha_pase)}</span>
+      <span class="que"><span class="exp">${esc(m.expediente)}</span><span class="obra" title="${esc(m.nombre_obra)}">${esc(m.nombre_obra) || 'Expediente ya cobrado o fuera de seguimiento'}</span>
+        <span class="paso">${cobrado ? '✔ Cobrado' : '→ Pasó a <b>' + esc(bonitoOf(m.oficina)) + '</b>'}${dias}</span>${m.comentarios ? '<small class="coment">' + esc(m.comentarios) + '</small>' : ''}</span>
+    </li>`;
+  }).join('') + '</ul>';
 }
 
 // Lista de oficinas con el monto y, al tocar, los expedientes que están en cada una.
