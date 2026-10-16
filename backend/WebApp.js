@@ -40,7 +40,7 @@ function accionEstado_() {
   var avisos = log.filter(function (l) { return l.corrida === ultimaCorrida && (l.nivel === 'ERROR' || l.nivel === 'AVISO'); })
     .map(function (l) { return { nivel: l.nivel, expediente: l.expediente, mensaje: l.mensaje }; });
   var cfg = leerConfig_();
-  return { ok: true, estados: estados, avisos: avisos, umbral: Number(cfg.umbral_dias_quieto) || CFG.UMBRAL_DEFAULT, ultima_corrida: ultimaCorrida, ultimos_movimientos: ultimosMovimientos_(ssD, estados, 15) };
+  return { ok: true, estados: estados, avisos: avisos, umbral: Number(cfg.umbral_dias_quieto) || CFG.UMBRAL_DEFAULT, ultima_corrida: ultimaCorrida, ultimos_movimientos: ultimosMovimientos_(ssD, estados, 8) };
 }
 
 // Últimos pases detectados por el bot (no la historia importada), del más nuevo al más viejo, con el nombre de la obra.
