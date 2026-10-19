@@ -63,7 +63,7 @@ table.tabla td.obra small { color: var(--gris); display: block; }
 .estado.teal { color: var(--teal); }
 .volver { background: #fff; border: 2px solid var(--teal); border-radius: 10px; color: var(--teal); font: inherit; font-size: 18px; font-weight: 700; padding: 10px 18px; min-height: 48px; cursor: pointer; margin: 8px 0; }
 .ficha-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-@media (min-width: 900px) { .ficha-grid { grid-template-columns: 3fr 2fr; } }
+@media (min-width: 900px) { .ficha-grid { grid-template-columns: 3fr 2fr; } .ficha-grid.ficha-sola { grid-template-columns: 1fr; max-width: 900px; } }
 .datos { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 16px; }
 .datos dt { color: var(--gris); }
 .datos dd { margin: 0; }
@@ -72,14 +72,8 @@ table.tabla td.obra small { color: var(--gris); display: block; }
 .tiempo li.importado { color: var(--gris); }
 .tiempo li.importado b { font-weight: 400; }
 .tiempo li.actual b { color: var(--teal); }
-.tiempo small, .gest small { color: var(--gris); }
-.tiempo li.importado small { color: inherit; }
-.tiempo .coment { display: block; font-size: 13px; color: inherit; opacity: .85; }
-.gest { list-style: none; padding: 0; font-size: 16px; }
-#fgest { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-top: 8px; }
-#fgest button { grid-column: 1 / -1; background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 14px; min-height: 48px; font-size: 17px; font: inherit; font-weight: 600; cursor: pointer; }
-#fgest button:disabled { background: var(--gris); }
-#fgest select, #fgest input { font: inherit; min-height: 44px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; }
+.tiempo small { color: inherit; }
+.tiempo .coment { display: block; font-size: 14px; color: inherit; }
 .mini { list-style: none; padding: 0; margin: 0; }
 .mini li { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borde); font-size: 16px; cursor: pointer; align-items: center; }
 .mini li:last-child { border-bottom: none; }
