@@ -228,7 +228,7 @@ async function ficha(exp, sinHistorial) {
         </div>
         <div class="card" style="margin-top:16px"><h2>Recorrido</h2>
           <ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}</b> ${esc(bonitoOf(m.oficina))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || '<li>Sin movimientos registrados</li>'}</ol>
-          <p><small>En gris: historia importada de la planilla. En negro: detectado por el bot.</small></p>
+          <p><small>En gris: historia importada de la planilla (sin comentario del municipio). En negro: detectado por el bot, con el comentario que figura en el portal.</small></p>
         </div>
       </div>
       <div class="card"><h2>Gestiones</h2>
