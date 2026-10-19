@@ -17,7 +17,7 @@ dónde está cada uno, su recorrido entre oficinas y una proyección de cuándo 
 4. Recalcula la mediana de días hábiles por oficina y la proyección de días restantes (ruta esperada por tipo de contrato, hoja RUTAS).
 5. Si un expediente supera `umbral_dias_quieto` (CONFIG, default 10 días hábiles) manda mail a `mails_alerta` y un aviso por app-ingeco.
 6. De lunes a viernes a las 18 h manda un mail de resumen: movimientos del día, expedientes por oficina con montos y los quietos
-   más del umbral. Va a `mails_resumen` (CONFIG, separados por coma); si está vacío, a `mails_alerta`; si también, al dueño del script.
+   más del umbral. Va a Julia Katz (juliakatz@grupoingeco.com.ar, `CFG.MAILS_RESUMEN_DEFAULT`); `mails_resumen` en CONFIG (separados por coma) la reemplaza.
    Se prueba con `enviarResumenAhora()` o la acción `setup_resumen`.
 
 ## Script Properties (editor de Apps Script → Configuración del proyecto)

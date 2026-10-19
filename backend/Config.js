@@ -23,6 +23,7 @@ var CFG = {
   },
   COLS_MAESTRO_OBLIGATORIAS: ['Nombre Obra', 'Expediente', 'Estado $', 'Monto', 'Tipo de contrato'],
   UMBRAL_DEFAULT: 10,
+  MAILS_RESUMEN_DEFAULT: 'juliakatz@grupoingeco.com.ar', // resumen diario 18 h; CONFIG mails_resumen lo pisa
   MIN_CASOS_MEDIANA: 5
 };
 

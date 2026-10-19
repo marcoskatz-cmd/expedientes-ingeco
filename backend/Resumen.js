@@ -73,13 +73,11 @@ function armarResumen(estados, movimientos, hoy, umbral) {
   return { asunto: asunto, texto: t.join('\n'), html: h, cantMov: movs.length };
 }
 
-/** Destinatarios: CONFIG mails_resumen; si está vacío, mails_alerta; si también, el dueño del script. */
-function destinatariosResumen(cfg, dueno) {
+/** Destinatarios: CONFIG mails_resumen; si está vacío, el default de Config.js (Julia Katz). */
+function destinatariosResumen(cfg, porDefecto) {
   var lista = function (v) { return String(v || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean); };
   var m = lista(cfg.mails_resumen);
-  if (!m.length) m = lista(cfg.mails_alerta);
-  if (!m.length && dueno) m = [dueno];
-  return m;
+  return m.length ? m : lista(porDefecto);
 }
 
 /** Lo dispara el trigger diario de las 18 h. Solo días hábiles (el bot no corre fines de semana). */
@@ -90,7 +88,7 @@ function enviarResumenDiario(forzado) {
   var ssD = ssDatos_(), cfg = leerConfig_();
   var umbral = Number(cfg.umbral_dias_quieto) || CFG.UMBRAL_DEFAULT;
   var r = armarResumen(leerHoja_(ssD, 'ESTADO_ACTUAL'), leerHoja_(ssD, 'MOVIMIENTOS'), fmtFecha(ahora), umbral);
-  var mails = destinatariosResumen(cfg, Session.getEffectiveUser().getEmail());
+  var mails = destinatariosResumen(cfg, CFG.MAILS_RESUMEN_DEFAULT);
   if (!mails.length) { log_('AVISO', '', 'Resumen diario: no hay destinatarios'); return; }
   try {
     MailApp.sendEmail({ to: mails.join(','), subject: r.asunto, body: r.texto, htmlBody: r.html, name: 'Expedientes INGECO' });

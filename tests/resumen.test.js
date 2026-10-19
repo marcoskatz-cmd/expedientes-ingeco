@@ -29,8 +29,7 @@ test('armarResumen: día sin movimientos igual arma el mail', () => {
   assert.match(r.asunto, /sin movimientos/);
   assert.match(r.texto, /Sin movimientos hoy/);
 });
-test('destinatariosResumen: mails_resumen, si no mails_alerta, si no el dueño', () => {
+test('destinatariosResumen: mails_resumen de CONFIG, si no el default', () => {
   assert.deepStrictEqual(R.destinatariosResumen({ mails_resumen: 'a@x, b@x', mails_alerta: 'c@x' }, 'd@x'), ['a@x', 'b@x']);
-  assert.deepStrictEqual(R.destinatariosResumen({ mails_alerta: 'c@x' }, 'd@x'), ['c@x']);
-  assert.deepStrictEqual(R.destinatariosResumen({}, 'd@x'), ['d@x']);
+  assert.deepStrictEqual(R.destinatariosResumen({ mails_alerta: 'c@x' }, 'd@x'), ['d@x']);
 });
