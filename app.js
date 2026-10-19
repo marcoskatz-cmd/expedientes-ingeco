@@ -213,7 +213,7 @@ async function ficha(exp, sinHistorial) {
   $('#vista').innerHTML = `<button class="volver" id="volver">← Volver</button>
     <p class="exp-grande">Expediente ${esc(e.expediente)}</p>
     <h2 style="margin-top:4px">${esc(e.nombre_obra)}</h2>
-    <div class="ficha-grid">
+    <div class="ficha-grid ficha-sola">
       <div>
         <div class="card">
           <dl class="datos">
@@ -228,23 +228,11 @@ async function ficha(exp, sinHistorial) {
         </div>
         <div class="card" style="margin-top:16px"><h2>Recorrido</h2>
           <ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}</b> ${esc(bonitoOf(m.oficina))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || '<li>Sin movimientos registrados</li>'}</ol>
-          <p><small>En gris: historia importada de la planilla (sin comentario del municipio). En negro: detectado por el bot, con el comentario que figura en el portal.</small></p>
+          <p><small>En gris: historia importada de la planilla. En negro: detectado por el bot.</small></p>
         </div>
-      </div>
-      <div class="card"><h2>Gestiones</h2>
-        <ul class="gest">${f.gestiones.map(g => `<li><b>${n(g.fecha)}</b> ${esc(g.tipo)} — ${esc(g.texto)} <small>${esc(g.nombre)}</small></li>`).join('') || '<li>Ninguna todavía</li>'}</ul>
-        ${u ? `<form id="fgest"><select name="tipo"><option value="llamé">Llamé</option><option value="fui">Fui</option><option value="nota">Nota</option></select>
-          <input name="texto" placeholder="Qué pasó" required maxlength="500"><button>Agregar gestión</button></form><p id="okgest"></p>` : '<p class="vacio">Para cargar gestiones abrí desde la app INGECO.</p>'}
       </div>
     </div>`;
   $('#volver').onclick = () => history.back();
-  const form = $('#fgest');
-  if (form) form.onsubmit = async ev => {
-    ev.preventDefault();
-    form.querySelector('button').disabled = true;
-    try { await api('gestion', { expediente: exp, tipo: form.tipo.value, texto: form.texto.value }); $('#okgest').textContent = 'Gestión guardada'; ficha(exp); }
-    catch (e) { $('#okgest').textContent = e.message; form.querySelector('button').disabled = false; }
-  };
 }
 
 async function renderStats() {
