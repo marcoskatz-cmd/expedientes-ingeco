@@ -32,6 +32,7 @@ function ultimoLog_(ssD, n) {
 
 function accionSetupExtra_(accion, p) {
   if (accion === 'setup_probar') { var r = ultimoCurso_(String(p.nro), String(p.anio)); return { ok: true, status: r.status, body: r.body }; }
+  if (accion === 'setup_resumen') { enviarResumenDiario(true); return { ok: true, log: ultimoLog_(ssDatos_(), 3) }; }
   if (accion === 'setup_hoja') { var h = ssDatos_().getSheetByName(p.hoja); return { ok: true, filas: h.getRange(1, 1, Math.min(h.getLastRow(), Number(p.n) || 50), h.getLastColumn()).getDisplayValues() }; }
   return null;
 }

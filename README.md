@@ -16,6 +16,9 @@ dónde está cada uno, su recorrido entre oficinas y una proyección de cuándo 
 3. Si la oficina o la fecha de pase cambió (el municipio a veces no informa fecha: entonces vale la fecha de detección), guarda un movimiento en MOVIMIENTOS y actualiza Oficina / Ultimo Movimiento en el maestro.
 4. Recalcula la mediana de días hábiles por oficina y la proyección de días restantes (ruta esperada por tipo de contrato, hoja RUTAS).
 5. Si un expediente supera `umbral_dias_quieto` (CONFIG, default 10 días hábiles) manda mail a `mails_alerta` y un aviso por app-ingeco.
+6. De lunes a viernes a las 18 h manda un mail de resumen: movimientos del día, expedientes por oficina con montos y los quietos
+   más del umbral. Va a `mails_resumen` (CONFIG, separados por coma); si está vacío, a `mails_alerta`; si también, al dueño del script.
+   Se prueba con `enviarResumenAhora()` o la acción `setup_resumen`.
 
 ## Script Properties (editor de Apps Script → Configuración del proyecto)
 
@@ -32,7 +35,7 @@ dónde está cada uno, su recorrido entre oficinas y una proyección de cuándo 
 Los ids de las planillas están como valores por defecto en `Config.js`; `SMT_CUIL` y `SMT_CLAVE` van en Script Properties.
 Las funciones de setup (`crearPlanillaDatos`, `importarRutas`, `importarTrazabilidad`, `correrAhora`, `instalarTrigger`) se pueden
 correr desde el editor o por `doPost` con las acciones `setup_*` de `Setup.js`, protegidas por la propiedad `SETUP_SECRET`
-(`setup_importar`, `setup_correr`, `setup_trigger`, `setup_log`, `setup_hoja`, `setup_probar`, `setup_rutas`, `setup_reset_alertas`,
+(`setup_importar`, `setup_correr`, `setup_trigger`, `setup_resumen`, `setup_log`, `setup_hoja`, `setup_probar`, `setup_rutas`, `setup_reset_alertas`,
 `setup_prop`, `setup_config`). Con `SETUP_SECRET` vacía quedan deshabilitadas.
 
 La hoja RUTAS tiene una ruta general de cobro (`tipo_contrato` = `*`) derivada de la trazabilidad histórica; se puede editar o
@@ -41,7 +44,7 @@ agregar rutas por tipo de contrato. La hoja "Ruta contratos" del maestro describ
 ## Deploy
 
 ```bash
-npm test                      # lógica pura (Parse, Diagnostico, Motor, Proyeccion, Importar, Alertas)
+npm test                      # lógica pura (Parse, Diagnostico, Motor, Proyeccion, Importar, Alertas, Resumen)
 cd backend && clasp push && clasp deploy -i <deploymentId>
 git subtree push --prefix web origin gh-pages
 ```
