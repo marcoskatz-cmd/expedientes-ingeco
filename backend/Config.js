@@ -7,8 +7,8 @@ var CFG = {
   HOJA_TRAZABILIDAD: 'trazabilidad',
   HOJA_RUTA_ORIGEN: 'Ruta contratos',
   HOJAS: {
-    MOVIMIENTOS: ['id', 'expediente', 'fecha_pase', 'oficina', 'descripcion_api', 'detectado_en', 'origen', 'dias_en_oficina_anterior', 'hora_pase'],
-    ESTADO_ACTUAL: ['expediente', 'nombre_obra', 'monto', 'tipo_contrato', 'prioridad', 'oficina_actual', 'desde', 'dias_quieto', 'etapa', 'paso_en_ruta', 'dias_restantes_est', 'fecha_cobro_est', 'calidad_estimacion', 'alerta_enviada_en', 'ultima_consulta', 'error', 'hora_pase', 'estado_pase', 'id_curso'],
+    MOVIMIENTOS: ['id', 'expediente', 'fecha_pase', 'oficina', 'descripcion_api', 'detectado_en', 'origen', 'dias_en_oficina_anterior', 'hora_pase', 'id_curso', 'recibido_en'],
+    ESTADO_ACTUAL: ['expediente', 'nombre_obra', 'monto', 'tipo_contrato', 'prioridad', 'oficina_actual', 'desde', 'dias_quieto', 'etapa', 'paso_en_ruta', 'dias_restantes_est', 'fecha_cobro_est', 'calidad_estimacion', 'alerta_enviada_en', 'ultima_consulta', 'error', 'hora_pase', 'estado_pase', 'id_curso', 'recibido_en'],
     RUTAS: ['tipo_contrato', 'orden', 'oficina', 'etapa', 'dias_default'],
     OFICINAS: ['nombre_api', 'nombre_canonico', 'mediana_dias', 'casos'],
     GESTIONES: ['id', 'expediente', 'fecha', 'tipo', 'texto', 'legajo', 'nombre'],

@@ -67,6 +67,38 @@ function asegurarEncabezados_(ss) {
   });
 }
 
+// Edita en el lugar filas de una hoja por su columna 'id' (o la que se pase): cambios = { id: { columna: valor } }.
+// Las de 'borrar' se eliminan de abajo hacia arriba para no correr los índices.
+function editarFilas_(ss, nombre, cambios, borrar, colId) {
+  var raw = leerHojaRaw_(ss, nombre), iId = raw.encabezados.indexOf(colId || 'id'), hechos = 0, aBorrar = [];
+  for (var r = 1; r < raw.filas.length; r++) {
+    var id = String(raw.filas[r][iId]);
+    if ((borrar || []).indexOf(id) >= 0) { aBorrar.push(r + 1); continue; }
+    var c = cambios[id];
+    if (!c) continue;
+    Object.keys(c).forEach(function (col) {
+      var i = raw.encabezados.indexOf(col);
+      if (i >= 0) raw.hoja.getRange(r + 1, i + 1).setValue(c[col]);
+    });
+    hechos++;
+  }
+  aBorrar.sort(function (a, b) { return b - a; }).forEach(function (f) { raw.hoja.deleteRow(f); });
+  return { editadas: hechos, borradas: aBorrar.length };
+}
+
+// Anota la llegada en el movimiento del pase (por número de curso; si el movimiento es anterior a guardarlo, el último del expediente).
+function anotarRecepciones_(ss, recepciones) {
+  if (!recepciones.length) return;
+  var movs = leerHoja_(ss, 'MOVIMIENTOS'), cambios = {};
+  recepciones.forEach(function (rc) {
+    var delExp = movs.filter(function (m) { return String(m.expediente) === rc.expediente; });
+    var m = delExp.filter(function (x) { return rc.id_curso !== '' && String(x.id_curso) === String(rc.id_curso); })[0] ||
+      delExp.sort(function (a, b) { return parseFecha(a.fecha_pase) - parseFecha(b.fecha_pase); })[delExp.length - 1];
+    if (m) cambios[String(m.id)] = { recibido_en: rc.recibido_en, id_curso: rc.id_curso };
+  });
+  editarFilas_(ss, 'MOVIMIENTOS', cambios, []);
+}
+
 function agregarFilas_(ss, nombre, objs) {
   if (!objs.length) return;
   var cols = CFG.HOJAS[nombre];

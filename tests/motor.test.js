@@ -120,3 +120,54 @@ test('hora del pase va al movimiento y al estado; sin cambio conserva la anterio
   assert.strictEqual(r2.cambio, false);
   assert.strictEqual(r2.estado.hora_pase, '13:03');
 });
+
+test('mismo número de curso: el pase sin recibir que se recibe NO es movimiento nuevo ni reinicia los días', () => {
+  const previo = { oficina_actual: 'CONTADURIA GENERAL', desde: '09/10/2026', id_curso: 900, estado_pase: 1, recibido_en: '', hora_pase: '' };
+  const lect = { ok: true, oficina: 'CONTADURIA GENERAL', oficinaNorm: 'CONTADURIA GENERAL', fechaPase: new Date(2026, 9, 14), hora: '11:28', estadoPase: 2, idCurso: 900, asunto: 'a' };
+  const r = M.compararEstado(previo, lect, exp, hoy);
+  assert.strictEqual(r.cambio, false);
+  assert.strictEqual(r.movimiento, null);
+  assert.strictEqual(r.recepcion, '14/10/2026 11:28');
+  assert.strictEqual(r.estado.desde, '09/10/2026');
+  assert.strictEqual(r.estado.dias_quieto, 4);
+  assert.strictEqual(r.estado.recibido_en, '14/10/2026 11:28');
+  // La corrida siguiente ya no vuelve a anotar la llegada
+  const r2 = M.compararEstado(r.estado, lect, exp, hoy);
+  assert.strictEqual(r2.recepcion, null);
+  assert.strictEqual(r2.estado.recibido_en, '14/10/2026 11:28');
+});
+test('número de curso nuevo en la misma oficina = pase interno real → movimiento', () => {
+  const previo = { oficina_actual: 'CONTADURIA GENERAL', desde: '09/10/2026', id_curso: 900, recibido_en: '09/10/2026 10:00' };
+  const lect = { ok: true, oficina: 'CONTADURIA GENERAL', oficinaNorm: 'CONTADURIA GENERAL', fechaPase: null, hora: '', estadoPase: 1, idCurso: 901, asunto: 'a' };
+  const r = M.compararEstado(previo, lect, exp, hoy);
+  assert.strictEqual(r.cambio, true);
+  assert.strictEqual(r.movimiento.recibido_en, '');
+  assert.strictEqual(r.movimiento.id_curso, 901);
+  assert.strictEqual(r.movimiento.fecha_pase, '15/10/2026');
+  assert.strictEqual(r.estado.recibido_en, '');
+});
+test('pase que aparece ya recibido: el movimiento lleva la llegada', () => {
+  const previo = { oficina_actual: 'FISCALIA', desde: '01/10/2026', id_curso: 1 };
+  const lect = { ok: true, oficina: 'TESORERIA', oficinaNorm: 'TESORERIA', fechaPase: new Date(2026, 9, 14), hora: '09:05', estadoPase: 2, idCurso: 2, asunto: 'a' };
+  const r = M.compararEstado(previo, lect, exp, hoy);
+  assert.strictEqual(r.movimiento.recibido_en, '14/10/2026 09:05');
+  assert.strictEqual(r.movimiento.dias_en_oficina_anterior, 9);
+});
+test('unirDuplicados: mismo pase anotado dos veces se une; pase interno con otro comentario se respeta', () => {
+  const movs = [
+    { id: 'a', expediente: 'X', fecha_pase: '15/10/2026', oficina: 'DIRECCION DE OBRAS VIALES', origen: 'bot', descripcion_api: 'P1' },
+    { id: 'b', expediente: 'X', fecha_pase: '19/10/2026', oficina: 'CONTADURIA GENERAL', origen: 'bot', descripcion_api: 'P2', dias_en_oficina_anterior: 2 },
+    { id: 'c', expediente: 'X', fecha_pase: '21/10/2026', oficina: 'CONTADURIA GENERAL', origen: 'bot', descripcion_api: 'P2', dias_en_oficina_anterior: 2 },
+    { id: 'd', expediente: 'X', fecha_pase: '21/10/2026', oficina: 'TESORERIA GENERAL', origen: 'bot', descripcion_api: 'P3', dias_en_oficina_anterior: 0 },
+    { id: 'e', expediente: 'Y', fecha_pase: '14/10/2026', oficina: 'CONTADURIA GENERAL', origen: 'bot', descripcion_api: 'ref.: obra' },
+    { id: 'f', expediente: 'Y', fecha_pase: '21/10/2026', oficina: 'CONTADURIA GENERAL', origen: 'bot', descripcion_api: 'REF.: OBRA' },
+    { id: 'g', expediente: 'Z', fecha_pase: '16/10/2026', oficina: 'FISCALIA', origen: 'bot', descripcion_api: 'Q' },
+    { id: 'h', expediente: 'Z', fecha_pase: '20/10/2026', oficina: 'FISCALIA', origen: 'bot', descripcion_api: 'Q', hora_pase: '13:03' }
+  ];
+  const u = M.unirDuplicados(movs);
+  assert.deepStrictEqual(u.borrar.sort(), ['c', 'h']);
+  assert.strictEqual(u.cambios.b.recibido_en, '21/10/2026');
+  assert.strictEqual(u.cambios.d.dias_en_oficina_anterior, 2);
+  assert.strictEqual(u.cambios.g.recibido_en, '20/10/2026 13:03');
+  assert.deepStrictEqual(u.desde, { Z: '16/10/2026' });
+});

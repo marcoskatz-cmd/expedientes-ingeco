@@ -22,6 +22,9 @@ const normOf = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toU
 const MINUSC = { DE: 1, DEL: 1, Y: 1, LA: 1, EL: 1, LOS: 1, LAS: 1 };
 const ACENTOS = { DIRECCION: 'Dirección', SECRETARIA: 'Secretaría', TESORERIA: 'Tesorería', CONTADURIA: 'Contaduría', FISCALIA: 'Fiscalía', ECONOMIA: 'Economía', PUBLICAS: 'Públicas' };
 const bonitoOf = t => normOf(t).split(' ').map((w, i) => ACENTOS[w] || (MINUSC[w] && i ? w.toLowerCase() : w.charAt(0) + w.slice(1).toLowerCase())).join(' ');
+// idestado 1 del municipio: el pase salió y la oficina todavía no lo recibió.
+const sinRecibir = e => String(e.estado_pase) === '1';
+const llegoTxt = (r, f, h) => r && r !== (n(f) + (h ? ' ' + h : '')) ? ' <small>· llegó el ' + esc(r) + ' h</small>' : '';
 const semaforo = e => !e.oficina_actual ? 'gris' : (Number(e.dias_quieto) > DATA.umbral ? 'ambar' : 'teal');
 const fechaKey = s => { const m = String(s || '').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + m[2] + m[1] : ''; };
 
@@ -135,7 +138,7 @@ function ultimosMovimientosHtml(movs) {
     return `<li data-exp="${esc(m.expediente)}" class="${cobrado ? 'cobrado' : ''}">
       <span class="fecha">${n(m.fecha_pase)}${m.hora_pase ? '<small> ' + esc(m.hora_pase) + ' h</small>' : ''}</span>
       <span class="que"><span class="exp">${esc(m.expediente)}</span><span class="obra" title="${esc(m.nombre_obra)}">${esc(m.nombre_obra) || 'Expediente ya cobrado o fuera de seguimiento'}</span>
-        <span class="paso">${cobrado ? '✔ Cobrado' : '→ Pasó a <b>' + esc(bonitoOf(m.oficina)) + '</b>'}${dias}</span>${m.comentarios ? '<small class="coment">' + esc(m.comentarios) + '</small>' : ''}</span>
+        <span class="paso">${cobrado ? '✔ Cobrado' : '→ ' + (m.id_curso === '' || m.id_curso == null ? 'Pasó a' : m.recibido_en ? 'Llegó a' : 'Salió hacia') + ' <b>' + esc(bonitoOf(m.oficina)) + '</b>' + llegoTxt(m.recibido_en, m.fecha_pase, m.hora_pase)}${dias}</span>${m.comentarios ? '<small class="coment">' + esc(m.comentarios) + '</small>' : ''}</span>
     </li>`;
   }).join('') + '</ul>';
 }
@@ -148,7 +151,7 @@ function porOficinaDesplegable(act, porOficina, total) {
     const exps = act.filter(e => e.ofKey === k).sort((a, b) => Number(b.dias_quieto) - Number(a.dias_quieto));
     return `<div class="of">
       <div class="of-cab"><span class="flecha">▸</span><span class="nom">${esc(v.nombre)} <small>(${v.cant})</small></span><div class="barra"><i style="width:${total ? v.monto / total * 100 : 0}%"></i></div><b>${pesos(v.monto)}</b></div>
-      <ul class="of-det" hidden>${exps.map(e => `<li data-exp="${esc(e.expediente)}" class="${semaforo(e)}"><span class="nom"><span class="exp">${esc(e.expediente)}</span><span class="obra" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra)}</span><small>desde ${n(e.desde)}</small></span><span class="dias"><span class="chip ${semaforo(e)}">${n(e.dias_quieto)} días</span></span><b>${pesos(e.monto)}</b></li>`).join('')}</ul>
+      <ul class="of-det" hidden>${exps.map(e => `<li data-exp="${esc(e.expediente)}" class="${semaforo(e)}"><span class="nom"><span class="exp">${esc(e.expediente)}</span><span class="obra" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra)}</span><small>desde ${n(e.desde)}${sinRecibir(e) ? ' · enviado, sin recibir' : ''}</small></span><span class="dias"><span class="chip ${semaforo(e)}">${n(e.dias_quieto)} días</span></span><b>${pesos(e.monto)}</b></li>`).join('')}</ul>
     </div>`;
   }).join('');
 }
@@ -199,14 +202,14 @@ function renderLista() {
       <td class="num"><span class="exp">${esc(e.expediente)}</span></td>
       <td class="obra">${esc(e.nombre_obra)}<small>${esc(e.tipo_contrato)}${e.prioridad && e.prioridad !== 'Normal' ? ' · prioridad ' + esc(e.prioridad) : ''}</small></td>
       <td class="num">${pesos(e.monto)}</td>
-      <td>${e.oficina_actual ? esc(e.ofNombre) + '<br><small>desde ' + n(e.desde) + '</small>' : '<span class="chip">sin dato</span><br><small>' + esc(e.error) + '</small>'}</td>
+      <td>${e.oficina_actual ? esc(e.ofNombre) + '<br><small>desde ' + n(e.desde) + (sinRecibir(e) ? ' · enviado, sin recibir' : '') + '</small>' : '<span class="chip">sin dato</span><br><small>' + esc(e.error) + '</small>'}</td>
       <td class="num">${e.oficina_actual ? `<span class="chip ${semaforo(e)}">${n(e.dias_quieto)}</span>` : ''}</td>
       <td>${esc(e.etapa || '')}</td>
       <td class="num">${proy(e)}</td>
       <td class="num">${n(e.fecha_cobro_est)}</td></tr>`).join('');
   const cards = lista.map(e => `<li class="${semaforo(e)}" data-exp="${esc(e.expediente)}">
       <span class="exp">${esc(e.expediente)}</span><b>${esc(e.nombre_obra)}</b><span>${pesos(e.monto)}</span>
-      <span>${e.oficina_actual ? esc(e.ofNombre) + ' · ' + n(e.dias_quieto) + ' días hábiles ahí' : 'Sin dato: ' + esc(e.error)}</span>
+      <span>${e.oficina_actual ? esc(e.ofNombre) + (sinRecibir(e) ? ' (enviado, sin recibir)' : '') + ' · ' + n(e.dias_quieto) + ' días hábiles ahí' : 'Sin dato: ' + esc(e.error)}</span>
       <span>${num(e.dias_restantes_est) != null ? 'Faltan ~' + n(e.dias_restantes_est) + ' días hábiles (' + n(e.fecha_cobro_est) + ')' + (e.calidad_estimacion === 'debil' ? ' · estimación débil' : '') : esc(e.etapa || '')}</span></li>`).join('');
   $('#vista').innerHTML = `
     ${filtrosHtml(lista)}
@@ -267,14 +270,14 @@ function pintarFicha(f) {
             <dt>Expediente</dt><dd>${esc(e.expediente)}</dd>
             <dt>Monto</dt><dd>${pesos(e.monto)}${!Number(e.monto) ? ' <small>(sin monto en la planilla)</small>' : ''}</dd>
             <dt>Tipo</dt><dd>${esc(e.tipo_contrato || '—')}</dd>
-            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> desde ' + n(e.desde) + (e.hora_pase ? ' ' + esc(e.hora_pase) + ' h' : '') + ' · ' + n(e.dias_quieto) + ' días hábiles' : 'Sin dato: ' + esc(e.error)}</dd>
+            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> desde ' + n(e.desde) + (e.hora_pase ? ' ' + esc(e.hora_pase) + ' h' : '') + ' · ' + n(e.dias_quieto) + ' días hábiles' + (sinRecibir(e) ? '<br><span class="chip">Enviado, la oficina todavía no lo recibió</span>' : llegoTxt(e.recibido_en, e.desde, e.hora_pase)) : 'Sin dato: ' + esc(e.error)}</dd>
             <dt>Etapa</dt><dd>${esc(e.etapa || '—')}${e.paso_en_ruta ? ' <small>(paso ' + n(e.paso_en_ruta) + ' de la ruta)</small>' : ''}</dd>
             <dt>Cobro estimado</dt><dd>${num(e.dias_restantes_est) != null ? '<b>' + n(e.fecha_cobro_est) + '</b> · faltan ~' + n(e.dias_restantes_est) + ' días hábiles' + (e.calidad_estimacion === 'debil' ? ' <span class="chip debil">estimación débil</span>' : '') : 'Sin proyección' + (e.etapa === 'Fuera de ruta' ? ': la oficina no está en la ruta de cobro' : '')}</dd>
             <dt>Última consulta</dt><dd>${n(e.ultima_consulta)}</dd>
           </dl>
         </div>
         <div class="card" style="margin-top:16px"><h2>Recorrido</h2>
-          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}${m.hora_pase ? ' ' + esc(m.hora_pase) + ' h' : ''}</b> ${esc(bonitoOf(m.oficina))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
+          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}${m.hora_pase ? ' ' + esc(m.hora_pase) + ' h' : ''}</b> ${esc(bonitoOf(m.oficina))}${llegoTxt(m.recibido_en, m.fecha_pase, m.hora_pase)}${i === movs.length - 1 && sinRecibir(e) && normOf(m.oficina) !== 'COBRADO' ? ' <small>· todavía sin recibir</small>' : ''}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
           <p><small>En gris: historia importada de la planilla. En negro: detectado por el bot.</small></p>
         </div>
       </div>

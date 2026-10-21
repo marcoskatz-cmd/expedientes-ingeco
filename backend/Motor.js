@@ -16,26 +16,40 @@ function interpretarRespuesta(resp) {
     asunto: String(ex.asunto || '').trim(), comentarios: String(curso.comentarios || '').replace(/\s+/g, ' ').trim(),
     fechaInicio: parseFecha(ex.fecha),
     hora: hora ? ('0' + hora[1]).slice(-2) + ':' + hora[2] : '',
-    // idestado: 1 = pase sin fecha (todavía no recibido, a confirmar), 2 = con fecha y hora. Se guarda para observarlo.
+    // idestado 1 = el pase salió y la oficina todavía no lo recibió (sin fecha ni hora); 2 = recibido (fecha y hora de llegada).
+    // Verificado 21-oct-2026 sobre 98 expedientes: 1 ⇔ fecha null, sin excepciones.
     estadoPase: curso.idestado === undefined || curso.idestado === null ? '' : curso.idestado,
     idCurso: curso.idcurso === undefined || curso.idcurso === null ? '' : curso.idcurso
   };
 }
 
+function recibidoTexto_(lectura) {
+  return lectura.fechaPase ? fmtFecha(lectura.fechaPase) + (lectura.hora ? ' ' + lectura.hora : '') : '';
+}
+
 function compararEstado(previo, lectura, exp, hoy) {
   var desdePrev = previo ? parseFecha(previo.desde) : null;
   var mismaOficina = !!previo && normOficina(previo.oficina_actual) === lectura.oficinaNorm;
-  // Sin fecha del municipio solo se compara la oficina; la fecha del pase es la de detección.
   var fechaPase = lectura.fechaPase || hoy;
-  var mismaFecha = !lectura.fechaPase || (!!desdePrev && desdePrev.getTime() === fechaPase.getTime());
-  var cambio = !previo || !mismaOficina || !mismaFecha;
+  var cambio, recepcion = null;
+  if (previo && previo.id_curso !== undefined && previo.id_curso !== '' && lectura.idCurso !== '' && lectura.idCurso !== undefined) {
+    // Cada pase tiene su número de curso: mismo número = mismo pase. Si mientras tanto la oficina lo recibió, no es un
+    // movimiento nuevo (antes contaba como tal y reiniciaba los días): solo se anota la llegada.
+    cambio = String(previo.id_curso) !== String(lectura.idCurso);
+    if (!cambio && !previo.recibido_en && lectura.fechaPase) recepcion = recibidoTexto_(lectura);
+  } else {
+    // Sin número de curso guardado (estado viejo): se compara oficina y fecha. Sin fecha del municipio, solo la oficina.
+    var mismaFecha = !lectura.fechaPase || (!!desdePrev && desdePrev.getTime() === fechaPase.getTime());
+    cambio = !previo || !mismaOficina || !mismaFecha;
+  }
   var movimiento = null;
   if (cambio) {
     movimiento = {
       id: nuevoId(), expediente: exp.clave, fecha_pase: fmtFecha(fechaPase), oficina: lectura.oficina,
       descripcion_api: (lectura.comentarios || lectura.asunto || '').slice(0, 300), detectado_en: fmtFecha(hoy), origen: 'bot',
       dias_en_oficina_anterior: (previo && desdePrev) ? diasHabiles(desdePrev, fechaPase) : '',
-      hora_pase: lectura.hora || ''
+      hora_pase: lectura.hora || '', id_curso: lectura.idCurso === undefined ? '' : lectura.idCurso,
+      recibido_en: recibidoTexto_(lectura)
     };
   }
   var desde = cambio ? fechaPase : desdePrev;
@@ -45,10 +59,12 @@ function compararEstado(previo, lectura, exp, hoy) {
     desde: fmtFecha(desde), dias_quieto: diasHabiles(desde, hoy),
     alerta_enviada_en: cambio ? '' : (previo.alerta_enviada_en || ''),
     ultima_consulta: fmtFecha(hoy), error: '',
-    hora_pase: cambio ? (lectura.hora || '') : (lectura.hora || (previo && previo.hora_pase) || ''),
-    estado_pase: lectura.estadoPase === undefined ? '' : lectura.estadoPase, id_curso: lectura.idCurso === undefined ? '' : lectura.idCurso
+    // hora_pase acompaña a 'desde': si el pase llegó después, la hora de llegada va en recibido_en.
+    hora_pase: cambio ? (lectura.hora || '') : ((previo && previo.hora_pase) || ''),
+    estado_pase: lectura.estadoPase === undefined ? '' : lectura.estadoPase, id_curso: lectura.idCurso === undefined ? '' : lectura.idCurso,
+    recibido_en: cambio ? recibidoTexto_(lectura) : (recepcion || (previo && previo.recibido_en) || '')
   };
-  return { cambio: cambio, movimiento: movimiento, estado: estado };
+  return { cambio: cambio, movimiento: movimiento, estado: estado, recepcion: recepcion };
 }
 
 // Estado previo sintético a partir del último movimiento de cada expediente (para la primera corrida
@@ -80,11 +96,35 @@ function cerrarCobrados(previos, cobradosClaves, hoy) {
   return out;
 }
 
+// Limpieza de lo registrado antes del 21-oct-2026: cuando un pase sin recibir se recibía, el bot anotaba un segundo
+// movimiento en la misma oficina y reiniciaba los días. Se detecta como dos movimientos seguidos del bot con la misma
+// oficina y el mismo comentario (el comentario es del pase: si cambia, fue un pase interno real).
+// Devuelve qué borrar, qué corregir y desde cuándo está realmente en la oficina actual.
+function unirDuplicados(movs) {
+  var porExp = {}, borrar = [], cambios = {}, desde = {};
+  movs.forEach(function (m) { (porExp[m.expediente] = porExp[m.expediente] || []).push(m); });
+  Object.keys(porExp).forEach(function (exp) {
+    var l = porExp[exp].slice().sort(function (a, b) { return parseFecha(a.fecha_pase) - parseFecha(b.fecha_pase); });
+    var base = null;
+    l.forEach(function (m, i) {
+      var dup = base && m.origen === 'bot' && base.origen === 'bot' && normOficina(m.oficina) === normOficina(base.oficina) &&
+        String(m.descripcion_api || '') !== '' && String(m.descripcion_api) === String(base.descripcion_api);
+      if (!dup) { base = m; return; }
+      borrar.push(m.id);
+      cambios[base.id] = Object.assign(cambios[base.id] || {}, { recibido_en: fmtFecha(parseFecha(m.fecha_pase)) + (m.hora_pase ? ' ' + m.hora_pase : '') });
+      var sig = l[i + 1];
+      if (sig) cambios[sig.id] = Object.assign(cambios[sig.id] || {}, { dias_en_oficina_anterior: diasHabiles(parseFecha(base.fecha_pase), parseFecha(sig.fecha_pase)) });
+      else desde[exp] = fmtFecha(parseFecha(base.fecha_pase));
+    });
+  });
+  return { borrar: borrar, cambios: cambios, desde: desde };
+}
+
 function nuevoId() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 if (typeof module !== 'undefined') {
   var P_ = require('./Parse.js'); parseFecha = P_.parseFecha; fmtFecha = P_.fmtFecha; normOficina = P_.normOficina; diasHabiles = P_.diasHabiles;
-  module.exports = { interpretarRespuesta, compararEstado, previoDesdeMovimientos, cerrarCobrados, nuevoId };
+  module.exports = { interpretarRespuesta, compararEstado, previoDesdeMovimientos, cerrarCobrados, unirDuplicados, nuevoId };
 }
