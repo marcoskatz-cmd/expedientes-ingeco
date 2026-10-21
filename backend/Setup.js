@@ -32,6 +32,7 @@ function ultimoLog_(ssD, n) {
 
 function accionSetupExtra_(accion, p) {
   if (accion === 'setup_unir_duplicados') {
+    var ssD = ssDatos_();
     var u = unirDuplicados(leerHoja_(ssD, 'MOVIMIENTOS'));
     if (!p.aplicar) return { ok: true, vista_previa: u };
     var res = editarFilas_(ssD, 'MOVIMIENTOS', u.cambios, u.borrar);
@@ -41,6 +42,8 @@ function accionSetupExtra_(accion, p) {
     invalidarCache_();
     return { ok: true, aplicado: u, movimientos: res, estados: resE };
   }
+  // Corrección puntual: { hoja, cambios: { id: { columna: valor } }, col_id? } (col_id 'expediente' para ESTADO_ACTUAL).
+  if (accion === 'setup_editar') { var re = editarFilas_(ssDatos_(), String(p.hoja), p.cambios || {}, [], p.col_id); invalidarCache_(); return { ok: true, resultado: re }; }
   if (accion === 'setup_probar') { var r = ultimoCurso_(String(p.nro), String(p.anio)); return { ok: true, status: r.status, body: r.body }; }
   if (accion === 'setup_resumen') { enviarResumenDiario(true); return { ok: true, log: ultimoLog_(ssDatos_(), 3) }; }
   if (accion === 'setup_hoja') { var h = ssDatos_().getSheetByName(p.hoja); return { ok: true, filas: h.getRange(1, 1, Math.min(h.getLastRow(), Number(p.n) || 50), h.getLastColumn()).getDisplayValues() }; }
