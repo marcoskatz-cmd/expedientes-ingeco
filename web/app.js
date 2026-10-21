@@ -149,13 +149,35 @@ function porOficinaDesplegable(act, porOficina, total) {
 }
 
 
-function filtrar() {
+function pasaFiltros(e) {
   const q = F.q.toLowerCase();
-  const lista = DATA.estados.filter(e =>
-    (!q || (e.nombre_obra + ' ' + e.expediente + ' ' + e.oficina_actual + ' ' + e.tipo_contrato).toLowerCase().includes(q)) &&
+  return (!q || (e.nombre_obra + ' ' + e.expediente + ' ' + e.oficina_actual + ' ' + e.tipo_contrato).toLowerCase().includes(q)) &&
     (!F.etapa || (e.etapa || '') === F.etapa) &&
     (!F.oficina || e.ofKey === F.oficina) &&
-    (!F.quietos || Number(e.dias_quieto) > DATA.umbral));
+    (!F.quietos || Number(e.dias_quieto) > DATA.umbral);
+}
+// Barra de filtros compartida por Lista e Índice; redibujar() vuelve a pintar la vista actual.
+function filtrosHtml(lista) {
+  const etapas = [...new Set(DATA.estados.map(e => e.etapa).filter(Boolean))].sort();
+  const oficinas = {}; DATA.estados.forEach(e => { if (e.ofKey) oficinas[e.ofKey] = e.ofNombre; });
+  return `<div class="filtros">
+      <input id="f-q" placeholder="Buscar obra, expediente, oficina o tipo" value="${esc(F.q)}">
+      <select id="f-etapa"><option value="">Todas las etapas</option>${etapas.map(x => `<option ${F.etapa === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
+      <select id="f-of"><option value="">Todas las oficinas</option>${Object.entries(oficinas).sort((a, b) => a[1].localeCompare(b[1])).map(([k, v]) => `<option value="${esc(k)}" ${F.oficina === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>
+      <label><input type="checkbox" id="f-quietos" ${F.quietos ? 'checked' : ''}> Solo quietos</label>
+      <span class="chip">${lista.length} de ${DATA.estados.length} · ${pesos(lista.reduce((s, e) => s + Number(e.monto || 0), 0))}</span>
+    </div>`;
+}
+function enlazarFiltros(redibujar) {
+  const inp = $('#f-q');
+  inp.oninput = ev => { F.q = ev.target.value; const pos = inp.selectionStart; redibujar(); const i2 = $('#f-q'); i2.focus(); i2.setSelectionRange(pos, pos); };
+  $('#f-etapa').onchange = ev => { F.etapa = ev.target.value; redibujar(); };
+  $('#f-of').onchange = ev => { F.oficina = ev.target.value; redibujar(); };
+  $('#f-quietos').onchange = ev => { F.quietos = ev.target.checked; redibujar(); };
+}
+
+function filtrar() {
+  const lista = DATA.estados.filter(pasaFiltros);
   const col = F.orden;
   const val = e => col === 'fecha_cobro_est' ? fechaKey(e[col]) : (['monto', 'dias_quieto', 'dias_restantes_est'].includes(col) ? (num(e[col]) ?? -1) : String(e[col] || '').toLowerCase());
   lista.sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * (F.asc ? 1 : -1); });
@@ -163,8 +185,6 @@ function filtrar() {
 }
 
 function renderLista() {
-  const etapas = [...new Set(DATA.estados.map(e => e.etapa).filter(Boolean))].sort();
-  const oficinas = {}; DATA.estados.forEach(e => { if (e.ofKey) oficinas[e.ofKey] = e.ofNombre; });
   const lista = filtrar();
   const cols = [['expediente', 'Expediente'], ['nombre_obra', 'Obra'], ['monto', 'Monto'], ['oficina_actual', 'Oficina actual'], ['dias_quieto', 'Días ahí'], ['etapa', 'Etapa'], ['dias_restantes_est', 'Faltan (d. háb.)'], ['fecha_cobro_est', 'Cobro est.']];
   const th = cols.map(([k, t]) => `<th data-col="${k}" class="${F.orden === k ? 'orden' + (F.asc ? ' asc' : '') : ''}">${t}</th>`).join('');
@@ -183,20 +203,10 @@ function renderLista() {
       <span>${e.oficina_actual ? esc(e.ofNombre) + ' · ' + n(e.dias_quieto) + ' días hábiles ahí' : 'Sin dato: ' + esc(e.error)}</span>
       <span>${num(e.dias_restantes_est) != null ? 'Faltan ~' + n(e.dias_restantes_est) + ' días hábiles (' + n(e.fecha_cobro_est) + ')' + (e.calidad_estimacion === 'debil' ? ' · estimación débil' : '') : esc(e.etapa || '')}</span></li>`).join('');
   $('#vista').innerHTML = `
-    <div class="filtros">
-      <input id="f-q" placeholder="Buscar obra, expediente, oficina o tipo" value="${esc(F.q)}">
-      <select id="f-etapa"><option value="">Todas las etapas</option>${etapas.map(x => `<option ${F.etapa === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
-      <select id="f-of"><option value="">Todas las oficinas</option>${Object.entries(oficinas).sort((a, b) => a[1].localeCompare(b[1])).map(([k, v]) => `<option value="${esc(k)}" ${F.oficina === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>
-      <label><input type="checkbox" id="f-quietos" ${F.quietos ? 'checked' : ''}> Solo quietos</label>
-      <span class="chip">${lista.length} de ${DATA.estados.length} · ${pesos(lista.reduce((s, e) => s + Number(e.monto), 0))}</span>
-    </div>
+    ${filtrosHtml(lista)}
     <table class="tabla"><thead><tr>${th}</tr></thead><tbody>${filas || '<tr><td colspan="8" class="vacio">Nada que mostrar</td></tr>'}</tbody></table>
     <ul class="lista">${cards || '<li class="vacio">Nada que mostrar</li>'}</ul>`;
-  const inp = $('#f-q');
-  inp.oninput = ev => { F.q = ev.target.value; const pos = inp.selectionStart; renderLista(); const i2 = $('#f-q'); i2.focus(); i2.setSelectionRange(pos, pos); };
-  $('#f-etapa').onchange = ev => { F.etapa = ev.target.value; renderLista(); };
-  $('#f-of').onchange = ev => { F.oficina = ev.target.value; renderLista(); };
-  $('#f-quietos').onchange = ev => { F.quietos = ev.target.checked; renderLista(); };
+  enlazarFiltros(renderLista);
   document.querySelectorAll('th[data-col]').forEach(t => t.onclick = () => { if (F.orden === t.dataset.col) F.asc = !F.asc; else { F.orden = t.dataset.col; F.asc = t.dataset.col === 'nombre_obra' || t.dataset.col === 'fecha_cobro_est' || t.dataset.col === 'expediente'; } renderLista(); });
   document.querySelectorAll('[data-exp]').forEach(el => el.onclick = () => ficha(el.dataset.exp));
 }
@@ -204,23 +214,18 @@ function renderLista() {
 // Índice: una línea por expediente (obra, número y monto) para recorrer todos sin scroll largo.
 const IDX = { orden: 'nombre_obra', asc: true };
 function renderIndice() {
-  const q = F.q.toLowerCase();
   const val = e => IDX.orden === 'monto' ? Number(e.monto || 0) : String(e[IDX.orden] || '').toLowerCase();
-  const lista = DATA.estados.filter(e => !q || (e.nombre_obra + ' ' + e.expediente).toLowerCase().includes(q))
+  const lista = DATA.estados.filter(pasaFiltros)
     .sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * (IDX.asc ? 1 : -1); });
   const col = (k, t) => `<span data-col="${k}" class="${IDX.orden === k ? 'orden' + (IDX.asc ? ' asc' : '') : ''}">${t}</span>`;
   const cab = col('nombre_obra', 'Obra') + '<span class="der">' + col('expediente', 'Expediente') + col('monto', 'Monto') + '</span>';
   $('#vista').innerHTML = `
-    <div class="filtros">
-      <input id="f-q" placeholder="Buscar obra o expediente" value="${esc(F.q)}">
-      <span class="chip">${lista.length} de ${DATA.estados.length} · ${pesos(lista.reduce((s, e) => s + Number(e.monto || 0), 0))}</span>
-    </div>
+    ${filtrosHtml(lista)}
     <div class="indice">
       <div class="idx-cab">${cab}</div>
       ${lista.map(e => `<div class="idx-fila ${semaforo(e)}" data-exp="${esc(e.expediente)}"><span class="obra" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra) || '—'}</span><span class="der"><span class="exp">${esc(e.expediente)}</span><b>${pesos(e.monto)}</b></span></div>`).join('') || '<p class="vacio">Nada que mostrar</p>'}
     </div>`;
-  const inp = $('#f-q');
-  inp.oninput = ev => { F.q = ev.target.value; const pos = inp.selectionStart; renderIndice(); const i2 = $('#f-q'); i2.focus(); i2.setSelectionRange(pos, pos); };
+  enlazarFiltros(renderIndice);
   document.querySelectorAll('.idx-cab [data-col]').forEach(t => t.onclick = () => { if (IDX.orden === t.dataset.col) IDX.asc = !IDX.asc; else { IDX.orden = t.dataset.col; IDX.asc = t.dataset.col !== 'monto'; } renderIndice(); });
   document.querySelectorAll('.idx-fila').forEach(el => el.onclick = () => ficha(el.dataset.exp));
 }
