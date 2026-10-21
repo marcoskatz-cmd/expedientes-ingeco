@@ -180,8 +180,11 @@ table.tabla td .exp { font-size: 17px; }
 .acciones button { white-space: nowrap; }
 @media (max-width: 600px) {
   .titulo .marca img { height: 14px; }
-  h1 { font-size: 1.12rem; }
-  #corrida { display: none; }
+  h1 { font-size: 1.12rem; white-space: normal; }
+  .titulo { flex-wrap: wrap; row-gap: 6px; }
+  .titulo .marca { flex: 1 1 100%; }
+  .acciones { flex: 1 1 100%; justify-content: flex-start; }
+  #corrida { flex: 1 1 100%; }
   .acciones button { padding: 0 10px; font-size: 14px; }
   .tile b { white-space: normal; font-size: 22px; line-height: 1.1; overflow-wrap: anywhere; }
 }
