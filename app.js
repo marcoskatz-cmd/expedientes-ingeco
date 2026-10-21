@@ -60,6 +60,7 @@ function render() {
   if (!DATA) return;
   if (VISTA === 'tablero') renderTablero();
   else if (VISTA === 'lista') renderLista();
+  else if (VISTA === 'indice') renderIndice();
   else renderStats();
 }
 
@@ -198,6 +199,30 @@ function renderLista() {
   $('#f-quietos').onchange = ev => { F.quietos = ev.target.checked; renderLista(); };
   document.querySelectorAll('th[data-col]').forEach(t => t.onclick = () => { if (F.orden === t.dataset.col) F.asc = !F.asc; else { F.orden = t.dataset.col; F.asc = t.dataset.col === 'nombre_obra' || t.dataset.col === 'fecha_cobro_est' || t.dataset.col === 'expediente'; } renderLista(); });
   document.querySelectorAll('[data-exp]').forEach(el => el.onclick = () => ficha(el.dataset.exp));
+}
+
+// Índice: una línea por expediente (obra, número y monto) para recorrer todos sin scroll largo.
+const IDX = { orden: 'nombre_obra', asc: true };
+function renderIndice() {
+  const q = F.q.toLowerCase();
+  const val = e => IDX.orden === 'monto' ? Number(e.monto || 0) : String(e[IDX.orden] || '').toLowerCase();
+  const lista = DATA.estados.filter(e => !q || (e.nombre_obra + ' ' + e.expediente).toLowerCase().includes(q))
+    .sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * (IDX.asc ? 1 : -1); });
+  const col = (k, t) => `<span data-col="${k}" class="${IDX.orden === k ? 'orden' + (IDX.asc ? ' asc' : '') : ''}">${t}</span>`;
+  const cab = col('nombre_obra', 'Obra') + '<span class="der">' + col('expediente', 'Expediente') + col('monto', 'Monto') + '</span>';
+  $('#vista').innerHTML = `
+    <div class="filtros">
+      <input id="f-q" placeholder="Buscar obra o expediente" value="${esc(F.q)}">
+      <span class="chip">${lista.length} de ${DATA.estados.length} · ${pesos(lista.reduce((s, e) => s + Number(e.monto || 0), 0))}</span>
+    </div>
+    <div class="indice">
+      <div class="idx-cab">${cab}</div>
+      ${lista.map(e => `<div class="idx-fila ${semaforo(e)}" data-exp="${esc(e.expediente)}"><span class="obra" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra) || '—'}</span><span class="der"><span class="exp">${esc(e.expediente)}</span><b>${pesos(e.monto)}</b></span></div>`).join('') || '<p class="vacio">Nada que mostrar</p>'}
+    </div>`;
+  const inp = $('#f-q');
+  inp.oninput = ev => { F.q = ev.target.value; const pos = inp.selectionStart; renderIndice(); const i2 = $('#f-q'); i2.focus(); i2.setSelectionRange(pos, pos); };
+  document.querySelectorAll('.idx-cab [data-col]').forEach(t => t.onclick = () => { if (IDX.orden === t.dataset.col) IDX.asc = !IDX.asc; else { IDX.orden = t.dataset.col; IDX.asc = t.dataset.col !== 'monto'; } renderIndice(); });
+  document.querySelectorAll('.idx-fila').forEach(el => el.onclick = () => ficha(el.dataset.exp));
 }
 
 async function ficha(exp, sinHistorial) {
