@@ -133,7 +133,7 @@ function ultimosMovimientosHtml(movs) {
     const cobrado = normOf(m.oficina) === 'COBRADO';
     const dias = m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ` <small>(estuvo ${n(m.dias_en_oficina_anterior)} días hábiles en la anterior)</small>` : '';
     return `<li data-exp="${esc(m.expediente)}" class="${cobrado ? 'cobrado' : ''}">
-      <span class="fecha">${n(m.fecha_pase)}</span>
+      <span class="fecha">${n(m.fecha_pase)}${m.hora_pase ? '<small> ' + esc(m.hora_pase) + ' h</small>' : ''}</span>
       <span class="que"><span class="exp">${esc(m.expediente)}</span><span class="obra" title="${esc(m.nombre_obra)}">${esc(m.nombre_obra) || 'Expediente ya cobrado o fuera de seguimiento'}</span>
         <span class="paso">${cobrado ? '✔ Cobrado' : '→ Pasó a <b>' + esc(bonitoOf(m.oficina)) + '</b>'}${dias}</span>${m.comentarios ? '<small class="coment">' + esc(m.comentarios) + '</small>' : ''}</span>
     </li>`;
@@ -267,14 +267,14 @@ function pintarFicha(f) {
             <dt>Expediente</dt><dd>${esc(e.expediente)}</dd>
             <dt>Monto</dt><dd>${pesos(e.monto)}${!Number(e.monto) ? ' <small>(sin monto en la planilla)</small>' : ''}</dd>
             <dt>Tipo</dt><dd>${esc(e.tipo_contrato || '—')}</dd>
-            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> desde ' + n(e.desde) + ' · ' + n(e.dias_quieto) + ' días hábiles' : 'Sin dato: ' + esc(e.error)}</dd>
+            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> desde ' + n(e.desde) + (e.hora_pase ? ' ' + esc(e.hora_pase) + ' h' : '') + ' · ' + n(e.dias_quieto) + ' días hábiles' : 'Sin dato: ' + esc(e.error)}</dd>
             <dt>Etapa</dt><dd>${esc(e.etapa || '—')}${e.paso_en_ruta ? ' <small>(paso ' + n(e.paso_en_ruta) + ' de la ruta)</small>' : ''}</dd>
             <dt>Cobro estimado</dt><dd>${num(e.dias_restantes_est) != null ? '<b>' + n(e.fecha_cobro_est) + '</b> · faltan ~' + n(e.dias_restantes_est) + ' días hábiles' + (e.calidad_estimacion === 'debil' ? ' <span class="chip debil">estimación débil</span>' : '') : 'Sin proyección' + (e.etapa === 'Fuera de ruta' ? ': la oficina no está en la ruta de cobro' : '')}</dd>
             <dt>Última consulta</dt><dd>${n(e.ultima_consulta)}</dd>
           </dl>
         </div>
         <div class="card" style="margin-top:16px"><h2>Recorrido</h2>
-          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}</b> ${esc(bonitoOf(m.oficina))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
+          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}${m.hora_pase ? ' ' + esc(m.hora_pase) + ' h' : ''}</b> ${esc(bonitoOf(m.oficina))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
           <p><small>En gris: historia importada de la planilla. En negro: detectado por el bot.</small></p>
         </div>
       </div>
