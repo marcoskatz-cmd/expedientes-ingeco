@@ -51,7 +51,7 @@ function ultimosMovimientos_(ssD, estados, n) {
   var k = function (m) { return fechaClave_(m.detectado_en) + fechaClave_(m.fecha_pase) + String(m.id); };
   movs.sort(function (a, b) { return k(b) < k(a) ? -1 : 1; });
   return movs.slice(0, n).map(function (m) {
-    return { id: m.id, expediente: String(m.expediente), nombre_obra: nombres[String(m.expediente)] || '', fecha_pase: m.fecha_pase, detectado_en: m.detectado_en, oficina: m.oficina, comentarios: m.descripcion_api, dias_en_oficina_anterior: m.dias_en_oficina_anterior };
+    return { id: m.id, expediente: String(m.expediente), nombre_obra: nombres[String(m.expediente)] || '', fecha_pase: m.fecha_pase, hora_pase: m.hora_pase || '', detectado_en: m.detectado_en, oficina: m.oficina, comentarios: m.descripcion_api, dias_en_oficina_anterior: m.dias_en_oficina_anterior };
   });
 }
 function fechaClave_(f) { var d = parseFecha(f); return d ? Utilities.formatDate(d, 'America/Argentina/Tucuman', 'yyyyMMdd') : '00000000';

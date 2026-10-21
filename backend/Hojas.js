@@ -49,6 +49,24 @@ function conCache_(clave, fn) {
 }
 function invalidarCache_() { PropertiesService.getScriptProperties().setProperty('CACHE_VER', String(Date.now())); }
 
+// Hojas creadas antes de sumar columnas: agrega al final los encabezados que falten, en formato texto
+// (si no, Sheets convierte '11:16' en una hora-fecha).
+function asegurarEncabezados_(ss) {
+  Object.keys(CFG.HOJAS).forEach(function (n) {
+    var h = ss.getSheetByName(n);
+    if (!h) return;
+    var enc = h.getRange(1, 1, 1, Math.max(1, h.getLastColumn())).getValues()[0].map(function (x) { return String(x).trim(); });
+    CFG.HOJAS[n].forEach(function (c, i) {
+      if (enc.indexOf(c) >= 0) return;
+      if (enc.length > i && enc[i] !== '') throw new Error('Hoja ' + n + ': la columna ' + (i + 1) + ' es "' + enc[i] + '" y se esperaba "' + c + '"');
+      if (h.getMaxColumns() < i + 1) h.insertColumnsAfter(h.getMaxColumns(), i + 1 - h.getMaxColumns());
+      h.getRange(1, i + 1).setValue(c).setFontWeight('bold');
+      h.getRange(2, i + 1, h.getMaxRows() - 1, 1).setNumberFormat('@');
+      enc[i] = c;
+    });
+  });
+}
+
 function agregarFilas_(ss, nombre, objs) {
   if (!objs.length) return;
   var cols = CFG.HOJAS[nombre];

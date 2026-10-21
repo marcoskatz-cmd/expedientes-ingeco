@@ -99,3 +99,24 @@ test('cerrarCobrados: el expediente que pasó a Cobrada cierra su estadía con u
   assert.strictEqual(r[0].dias_en_oficina_anterior, 10);
   assert.strictEqual(r[0].origen, 'bot');
 });
+
+test('hora del pase: HH:MM sin fracción; vacía si el pase no tiene fecha', () => {
+  const r = M.interpretarRespuesta({ expediente: {}, curso: { descripcion: 'Tesorería', fecha: '2026-02-05T03:00:00.000Z', hora: '9:16:18.2306', idestado: 2, idcurso: 77 } });
+  assert.strictEqual(r.hora, '09:16');
+  assert.strictEqual(r.estadoPase, 2);
+  assert.strictEqual(r.idCurso, 77);
+  const s = M.interpretarRespuesta({ expediente: {}, curso: { descripcion: 'Tesorería', fecha: null, hora: null, idestado: 1 } });
+  assert.strictEqual(s.hora, '');
+  assert.strictEqual(s.estadoPase, 1);
+});
+test('hora del pase va al movimiento y al estado; sin cambio conserva la anterior', () => {
+  const lect = { ok: true, oficina: 'Fiscalía', oficinaNorm: 'FISCALIA', fechaPase: new Date(2026, 9, 12), asunto: 'a', hora: '13:03', estadoPase: 2, idCurso: 5 };
+  const r = M.compararEstado(null, lect, exp, hoy);
+  assert.strictEqual(r.movimiento.hora_pase, '13:03');
+  assert.strictEqual(r.estado.hora_pase, '13:03');
+  assert.strictEqual(r.estado.estado_pase, 2);
+  const previo = { oficina_actual: 'Fiscalía', desde: '12/10/2026', hora_pase: '13:03' };
+  const r2 = M.compararEstado(previo, Object.assign({}, lect, { hora: '' }), exp, hoy);
+  assert.strictEqual(r2.cambio, false);
+  assert.strictEqual(r2.estado.hora_pase, '13:03');
+});

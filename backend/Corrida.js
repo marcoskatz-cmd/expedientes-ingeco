@@ -11,6 +11,7 @@ function correr(forzado) {
 function correr_(hoy) {
   CORRIDA_ID_ = null;
   var ssD = ssDatos_(), ssM = ssMaestro_();
+  asegurarEncabezados_(ssD);
 
   // 1. Maestro con diagnóstico
   var raw = leerHojaRaw_(ssM, CFG.HOJA_MAESTRO);

@@ -9,10 +9,16 @@ function interpretarRespuesta(resp) {
   var fechaPase = (curso.fecha === null || curso.fecha === undefined || curso.fecha === '') ? null : parseFecha(curso.fecha);
   if (fechaPase === null && curso.fecha) return { ok: false, motivo: 'fecha de pase inválida: ' + curso.fecha };
   var ex = resp.expediente || {};
+  // La hora viene con fracción de segundo ('11:16:18.2306'); alcanza con HH:MM. Solo la trae el pase con fecha.
+  var hora = /^(\d{1,2}):(\d{2})/.exec(String(curso.hora || ''));
   return {
     ok: true, oficina: oficina, oficinaNorm: normOficina(oficina), fechaPase: fechaPase,
     asunto: String(ex.asunto || '').trim(), comentarios: String(curso.comentarios || '').replace(/\s+/g, ' ').trim(),
-    fechaInicio: parseFecha(ex.fecha)
+    fechaInicio: parseFecha(ex.fecha),
+    hora: hora ? ('0' + hora[1]).slice(-2) + ':' + hora[2] : '',
+    // idestado: 1 = pase sin fecha (todavía no recibido, a confirmar), 2 = con fecha y hora. Se guarda para observarlo.
+    estadoPase: curso.idestado === undefined || curso.idestado === null ? '' : curso.idestado,
+    idCurso: curso.idcurso === undefined || curso.idcurso === null ? '' : curso.idcurso
   };
 }
 
@@ -28,7 +34,8 @@ function compararEstado(previo, lectura, exp, hoy) {
     movimiento = {
       id: nuevoId(), expediente: exp.clave, fecha_pase: fmtFecha(fechaPase), oficina: lectura.oficina,
       descripcion_api: (lectura.comentarios || lectura.asunto || '').slice(0, 300), detectado_en: fmtFecha(hoy), origen: 'bot',
-      dias_en_oficina_anterior: (previo && desdePrev) ? diasHabiles(desdePrev, fechaPase) : ''
+      dias_en_oficina_anterior: (previo && desdePrev) ? diasHabiles(desdePrev, fechaPase) : '',
+      hora_pase: lectura.hora || ''
     };
   }
   var desde = cambio ? fechaPase : desdePrev;
@@ -37,7 +44,9 @@ function compararEstado(previo, lectura, exp, hoy) {
     oficina_actual: cambio ? lectura.oficina : previo.oficina_actual,
     desde: fmtFecha(desde), dias_quieto: diasHabiles(desde, hoy),
     alerta_enviada_en: cambio ? '' : (previo.alerta_enviada_en || ''),
-    ultima_consulta: fmtFecha(hoy), error: ''
+    ultima_consulta: fmtFecha(hoy), error: '',
+    hora_pase: cambio ? (lectura.hora || '') : (lectura.hora || (previo && previo.hora_pase) || ''),
+    estado_pase: lectura.estadoPase === undefined ? '' : lectura.estadoPase, id_curso: lectura.idCurso === undefined ? '' : lectura.idCurso
   };
   return { cambio: cambio, movimiento: movimiento, estado: estado };
 }
