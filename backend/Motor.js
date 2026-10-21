@@ -23,6 +23,9 @@ function interpretarRespuesta(resp) {
   };
 }
 
+// El municipio no informa cuándo salió un pase: lo más cercano es la hora en que el bot lo vio (consulta cada hora).
+function horaDe_(d) { return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+
 function recibidoTexto_(lectura) {
   return lectura.fechaPase ? fmtFecha(lectura.fechaPase) + (lectura.hora ? ' ' + lectura.hora : '') : '';
 }
@@ -49,7 +52,8 @@ function compararEstado(previo, lectura, exp, hoy) {
       descripcion_api: (lectura.comentarios || lectura.asunto || '').slice(0, 300), detectado_en: fmtFecha(hoy), origen: 'bot',
       dias_en_oficina_anterior: (previo && desdePrev) ? diasHabiles(desdePrev, fechaPase) : '',
       hora_pase: lectura.hora || '', id_curso: lectura.idCurso === undefined ? '' : lectura.idCurso,
-      recibido_en: recibidoTexto_(lectura)
+      recibido_en: recibidoTexto_(lectura),
+      hora_detectado: lectura.fechaPase ? '' : horaDe_(hoy)
     };
   }
   var desde = cambio ? fechaPase : desdePrev;
@@ -62,7 +66,8 @@ function compararEstado(previo, lectura, exp, hoy) {
     // hora_pase acompaña a 'desde': si el pase llegó después, la hora de llegada va en recibido_en.
     hora_pase: cambio ? (lectura.hora || '') : ((previo && previo.hora_pase) || ''),
     estado_pase: lectura.estadoPase === undefined ? '' : lectura.estadoPase, id_curso: lectura.idCurso === undefined ? '' : lectura.idCurso,
-    recibido_en: cambio ? recibidoTexto_(lectura) : (recepcion || (previo && previo.recibido_en) || '')
+    recibido_en: cambio ? recibidoTexto_(lectura) : (recepcion || (previo && previo.recibido_en) || ''),
+    hora_detectado: cambio ? (lectura.fechaPase ? '' : horaDe_(hoy)) : ((previo && previo.hora_detectado) || '')
   };
   return { cambio: cambio, movimiento: movimiento, estado: estado, recepcion: recepcion };
 }

@@ -47,11 +47,18 @@ function accionEstado_() {
 function ultimosMovimientos_(ssD, estados, n) {
   var nombres = {};
   estados.forEach(function (e) { nombres[String(e.expediente)] = e.nombre_obra; });
-  var movs = leerHoja_(ssD, 'MOVIMIENTOS').filter(function (m) { return m.origen === 'bot'; });
+  var todos = leerHoja_(ssD, 'MOVIMIENTOS'), anterior = {}, porExp = {};
+  // Oficina de la que salió cada pase = la del movimiento anterior del mismo expediente.
+  todos.forEach(function (m) { (porExp[m.expediente] = porExp[m.expediente] || []).push(m); });
+  Object.keys(porExp).forEach(function (x) {
+    porExp[x].sort(function (a, b) { return parseFecha(a.fecha_pase) - parseFecha(b.fecha_pase); })
+      .forEach(function (m, i, l) { anterior[m.id] = i ? l[i - 1].oficina : ''; });
+  });
+  var movs = todos.filter(function (m) { return m.origen === 'bot'; });
   var k = function (m) { return fechaClave_(m.detectado_en) + fechaClave_(m.fecha_pase) + String(m.id); };
   movs.sort(function (a, b) { return k(b) < k(a) ? -1 : 1; });
   return movs.slice(0, n).map(function (m) {
-    return { id: m.id, expediente: String(m.expediente), nombre_obra: nombres[String(m.expediente)] || '', fecha_pase: m.fecha_pase, hora_pase: m.hora_pase || '', recibido_en: m.recibido_en || '', id_curso: m.id_curso === undefined ? '' : m.id_curso, detectado_en: m.detectado_en, oficina: m.oficina, comentarios: m.descripcion_api, dias_en_oficina_anterior: m.dias_en_oficina_anterior };
+    return { id: m.id, expediente: String(m.expediente), nombre_obra: nombres[String(m.expediente)] || '', fecha_pase: m.fecha_pase, hora_pase: m.hora_pase || '', recibido_en: m.recibido_en || '', hora_detectado: m.hora_detectado || '', id_curso: m.id_curso === undefined ? '' : m.id_curso, detectado_en: m.detectado_en, oficina: m.oficina, oficina_anterior: anterior[m.id] || '', comentarios: m.descripcion_api, dias_en_oficina_anterior: m.dias_en_oficina_anterior };
   });
 }
 function fechaClave_(f) { var d = parseFecha(f); return d ? Utilities.formatDate(d, 'America/Argentina/Tucuman', 'yyyyMMdd') : '00000000';

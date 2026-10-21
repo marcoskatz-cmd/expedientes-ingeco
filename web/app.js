@@ -24,7 +24,26 @@ const ACENTOS = { DIRECCION: 'Dirección', SECRETARIA: 'Secretaría', TESORERIA:
 const bonitoOf = t => normOf(t).split(' ').map((w, i) => ACENTOS[w] || (MINUSC[w] && i ? w.toLowerCase() : w.charAt(0) + w.slice(1).toLowerCase())).join(' ');
 // idestado 1 del municipio: el pase salió y la oficina todavía no lo recibió.
 const sinRecibir = e => String(e.estado_pase) === '1';
-const llegoTxt = (r, f, h) => r && r !== (n(f) + (h ? ' ' + h : '')) ? ' <small>· llegó el ' + esc(r) + ' h</small>' : '';
+const corridaTxt = c => String(c || '').replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, '$3/$2 $4:$5 h');
+// Sin fecha del municipio: hora en que el bot vio el pase (el municipio no informa la salida).
+// Texto de un pase: "Salió el 21/10/2026 a las 12:15 h de Contaduría General" / "Llegó el 21/10/2026 a las 11:28 h a Tesorería General".
+// El municipio no informa la salida: la hora de salida es la hora en que el bot vio el pase (consulta cada hora).
+// pendiente = la oficina todavía no lo recibió (solo el pase actual).
+const elDia = (f, h) => 'el ' + esc(f) + (h ? ' a las ' + esc(h) + ' h' : '');
+function pasoHtml(m, prevOf, pendiente) {
+  const interno = prevOf && normOf(prevOf) === normOf(m.oficina);
+  const of = '<b>' + esc(bonitoOf(m.oficina)) + '</b>' + (interno ? ' (pase interno)' : ''), prev = prevOf && !interno ? '<b>' + esc(bonitoOf(prevOf)) + '</b>' : '';
+  if (normOf(m.oficina) === 'COBRADO') return '✔ Cobrado ' + elDia(m.fecha_pase);
+  const fp = String(m.fecha_pase || '');
+  const [rf, rh] = m.recibido_en ? String(m.recibido_en).split(' ') : (m.hora_pase ? [fp, m.hora_pase] : ['', '']);
+  const salidaConocida = m.hora_detectado || pendiente || (rf && rf !== fp);
+  const l = [];
+  if (salidaConocida) l.push('Salió ' + elDia(fp, m.hora_detectado) + (prev ? ' de ' + prev : ''));
+  if (rf) l.push('Llegó ' + elDia(rf, rh) + ' a ' + of + (!salidaConocida && prev ? ' desde ' + prev : ''));
+  else if (pendiente) l.push('Todavía no llegó a ' + of);
+  if (!l.length) l.push('Pasó ' + elDia(fp) + (prev ? ' de ' + prev : '') + ' a ' + of);
+  return l.join('<br>');
+}
 const semaforo = e => !e.oficina_actual ? 'gris' : (Number(e.dias_quieto) > DATA.umbral ? 'ambar' : 'teal');
 const fechaKey = s => { const m = String(s || '').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + m[2] + m[1] : ''; };
 
@@ -54,7 +73,7 @@ async function cargar() {
     ULTIMO_TXT = txt;
     guardarCache(nuevo);
     if (!igual) { DATA = nuevo; prepararEstados(DATA); }
-    $('#corrida').textContent = DATA.ultima_corrida ? 'Última consulta ' + DATA.ultima_corrida.replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, '$3/$2 $4:$5') : '';
+    $('#corrida').textContent = DATA.ultima_corrida ? 'Municipio consultado el ' + corridaTxt(DATA.ultima_corrida) : '';
     if (igual) return; // nada cambió: no se redibuja (no se pierde el scroll ni lo que estaba abierto)
     $('#avisos').innerHTML = DATA.avisos.filter(a => a.nivel === 'ERROR').map(a => `<div class="aviso">${esc(a.mensaje)}</div>`).join('');
     render();
@@ -138,7 +157,7 @@ function ultimosMovimientosHtml(movs) {
     return `<li data-exp="${esc(m.expediente)}" class="${cobrado ? 'cobrado' : ''}">
       <span class="fecha">${n(m.fecha_pase)}${m.hora_pase ? '<small> ' + esc(m.hora_pase) + ' h</small>' : ''}</span>
       <span class="que"><span class="exp">${esc(m.expediente)}</span><span class="obra" title="${esc(m.nombre_obra)}">${esc(m.nombre_obra) || 'Expediente ya cobrado o fuera de seguimiento'}</span>
-        <span class="paso">${cobrado ? '✔ Cobrado' : '→ ' + (m.id_curso === '' || m.id_curso == null ? 'Pasó a' : m.recibido_en ? 'Llegó a' : 'Salió hacia') + ' <b>' + esc(bonitoOf(m.oficina)) + '</b>' + llegoTxt(m.recibido_en, m.fecha_pase, m.hora_pase)}${dias}</span>${m.comentarios ? '<small class="coment">' + esc(m.comentarios) + '</small>' : ''}</span>
+        <span class="paso">${pasoHtml(m, m.oficina_anterior, !cobrado && !m.recibido_en && !m.hora_pase && m.id_curso !== '' && m.id_curso != null)}${dias}</span>${m.comentarios ? '<small class="coment">' + esc(m.comentarios) + '</small>' : ''}</span>
     </li>`;
   }).join('') + '</ul>';
 }
@@ -270,14 +289,14 @@ function pintarFicha(f) {
             <dt>Expediente</dt><dd>${esc(e.expediente)}</dd>
             <dt>Monto</dt><dd>${pesos(e.monto)}${!Number(e.monto) ? ' <small>(sin monto en la planilla)</small>' : ''}</dd>
             <dt>Tipo</dt><dd>${esc(e.tipo_contrato || '—')}</dd>
-            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> desde ' + n(e.desde) + (e.hora_pase ? ' ' + esc(e.hora_pase) + ' h' : '') + ' · ' + n(e.dias_quieto) + ' días hábiles' + (sinRecibir(e) ? '<br><span class="chip">Enviado, la oficina todavía no lo recibió</span>' : llegoTxt(e.recibido_en, e.desde, e.hora_pase)) : 'Sin dato: ' + esc(e.error)}</dd>
+            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> · ' + n(e.dias_quieto) + ' días hábiles<br>' + pasoHtml({ oficina: e.oficina_actual, fecha_pase: e.desde, hora_pase: e.hora_pase, recibido_en: e.recibido_en, hora_detectado: e.hora_detectado }, movs.length > 1 ? movs[movs.length - 2].oficina : '', sinRecibir(e)) : 'Sin dato: ' + esc(e.error)}</dd>
             <dt>Etapa</dt><dd>${esc(e.etapa || '—')}${e.paso_en_ruta ? ' <small>(paso ' + n(e.paso_en_ruta) + ' de la ruta)</small>' : ''}</dd>
             <dt>Cobro estimado</dt><dd>${num(e.dias_restantes_est) != null ? '<b>' + n(e.fecha_cobro_est) + '</b> · faltan ~' + n(e.dias_restantes_est) + ' días hábiles' + (e.calidad_estimacion === 'debil' ? ' <span class="chip debil">estimación débil</span>' : '') : 'Sin proyección' + (e.etapa === 'Fuera de ruta' ? ': la oficina no está en la ruta de cobro' : '')}</dd>
-            <dt>Última consulta</dt><dd>${n(e.ultima_consulta)}</dd>
+            <dt>Última consulta</dt><dd>${DATA && DATA.ultima_corrida ? corridaTxt(DATA.ultima_corrida) : n(e.ultima_consulta)}</dd>
           </dl>
         </div>
         <div class="card" style="margin-top:16px"><h2>Recorrido</h2>
-          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}${m.hora_pase ? ' ' + esc(m.hora_pase) + ' h' : ''}</b> ${esc(bonitoOf(m.oficina))}${llegoTxt(m.recibido_en, m.fecha_pase, m.hora_pase)}${i === movs.length - 1 && sinRecibir(e) && normOf(m.oficina) !== 'COBRADO' ? ' <small>· todavía sin recibir</small>' : ''}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
+          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}">${pasoHtml(m, i ? movs[i - 1].oficina : '', i === movs.length - 1 && sinRecibir(e))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
           <p><small>En gris: historia importada de la planilla. En negro: detectado por el bot.</small></p>
         </div>
       </div>

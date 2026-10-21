@@ -171,3 +171,13 @@ test('unirDuplicados: mismo pase anotado dos veces se une; pase interno con otro
   assert.strictEqual(u.cambios.g.recibido_en, '20/10/2026 13:03');
   assert.deepStrictEqual(u.desde, { Z: '16/10/2026' });
 });
+test('pase sin fecha: guarda la hora en que el bot lo vio salir; recibido: no', () => {
+  const ahora = new Date(2026, 9, 15, 12, 5);
+  const lect = { ok: true, oficina: 'TESORERIA', oficinaNorm: 'TESORERIA', fechaPase: null, hora: '', estadoPase: 1, idCurso: 3, asunto: 'a' };
+  const r = M.compararEstado({ oficina_actual: 'CONTADURIA', desde: '01/10/2026', id_curso: 2 }, lect, exp, ahora);
+  assert.strictEqual(r.movimiento.hora_detectado, '12:05');
+  assert.strictEqual(r.estado.hora_detectado, '12:05');
+  const r2 = M.compararEstado(r.estado, Object.assign({}, lect, { fechaPase: new Date(2026, 9, 16), hora: '09:00', estadoPase: 2 }), exp, new Date(2026, 9, 16, 10, 0));
+  assert.strictEqual(r2.estado.hora_detectado, '12:05');
+  assert.strictEqual(r2.recepcion, '16/10/2026 09:00');
+});
