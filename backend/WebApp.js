@@ -17,9 +17,9 @@ function doPost(e) {
     // Toda acción exige una sesión válida de app-ingeco: los datos son montos y gestiones internas.
     var u = usuarioDeSesion_(p.sesion);
     if (!u) return json_({ ok: false, error: 'Abrí este sistema desde la app INGECO', sin_sesion: true });
-    if (accion === 'estado') return json_(accionEstado_());
-    if (accion === 'ficha') return json_(accionFicha_(p.expediente));
-    if (accion === 'estadisticas') return json_(accionEstadisticas_());
+    if (accion === 'estado') return json_(conCache_('estado', accionEstado_));
+    if (accion === 'ficha') return json_(conCache_('ficha_' + String(p.expediente || ''), function () { return accionFicha_(p.expediente); }));
+    if (accion === 'estadisticas') return json_(conCache_('estadisticas', accionEstadisticas_));
     if (accion === 'gestion') return json_(accionGestion_(p, u));
     if (accion === 'forzar_corrida') {
       if (!u.es_admin) return json_({ ok: false, error: 'Solo administradores' });
@@ -35,7 +35,7 @@ function doPost(e) {
 function accionEstado_() {
   var ssD = ssDatos_();
   var estados = leerHoja_(ssD, 'ESTADO_ACTUAL');
-  var log = leerHoja_(ssD, 'LOG');
+  var log = leerUltimas_(ssD, 'LOG', 300);
   var ultimaCorrida = log.length ? log[log.length - 1].corrida : '';
   var avisos = log.filter(function (l) { return l.corrida === ultimaCorrida && (l.nivel === 'ERROR' || l.nivel === 'AVISO'); })
     .map(function (l) { return { nivel: l.nivel, expediente: l.expediente, mensaje: l.mensaje }; });
@@ -89,6 +89,7 @@ function accionGestion_(p, u) {
   if (tipos.indexOf(p.tipo) < 0) return { ok: false, error: 'Tipo de gestión inválido' };
   if (!p.expediente || !String(p.texto || '').trim()) return { ok: false, error: 'Falta el texto de la gestión' };
   agregarFilas_(ssDatos_(), 'GESTIONES', [{ id: nuevoId(), expediente: p.expediente, fecha: fmtFecha(new Date()), tipo: p.tipo, texto: String(p.texto).trim().slice(0, 500), legajo: u.legajo, nombre: u.nombre_visible }]);
+  invalidarCache_();
   return { ok: true };
 }
 

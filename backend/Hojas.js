@@ -1,6 +1,8 @@
 // Pegamento con Google Sheets. Sin tests automáticos: se prueba en vivo desde el editor.
 
-function ssDatos_() { return SpreadsheetApp.openById(prop_('SHEET_DATOS')); }
+// Se abre una sola vez por ejecución (abrirla tarda; log_ la pedía en cada renglón).
+var SS_DATOS_ = null;
+function ssDatos_() { return SS_DATOS_ || (SS_DATOS_ = SpreadsheetApp.openById(prop_('SHEET_DATOS'))); }
 function ssMaestro_() { return SpreadsheetApp.openById(prop_('SHEET_MAESTRO')); }
 
 function leerHojaRaw_(ss, nombre) {
@@ -10,6 +12,42 @@ function leerHojaRaw_(ss, nombre) {
   return { hoja: h, encabezados: v.length ? v[0].map(function (x) { return String(x).trim(); }) : [], filas: v };
 }
 function leerHoja_(ss, nombre) { return filasAObjetos(leerHojaRaw_(ss, nombre).filas); }
+
+// Solo los últimos n renglones (el LOG crece sin parar y no hace falta leerlo entero).
+function leerUltimas_(ss, nombre, n) {
+  var h = ss.getSheetByName(nombre), last = h.getLastRow(), cols = h.getLastColumn();
+  if (last < 2) return [];
+  var enc = h.getRange(1, 1, 1, cols).getValues();
+  var desde = Math.max(2, last - n + 1);
+  return filasAObjetos(enc.concat(h.getRange(desde, 1, last - desde + 1, cols).getValues()));
+}
+
+// Caché de respuestas de la API. Los datos cambian solo cuando corre el bot (una vez por hora) o se carga
+// una gestión: ahí se llama a invalidarCache_(). Lo editado a mano en la planilla aparece en menos de 1 hora.
+// CacheService guarda hasta 100 KB por clave, así que las respuestas grandes se parten en pedazos.
+function conCache_(clave, fn) {
+  var cache = CacheService.getScriptCache();
+  var k = 'r' + (PropertiesService.getScriptProperties().getProperty('CACHE_VER') || '0') + '_' + clave;
+  var cab = cache.get(k);
+  if (cab) {
+    var nP = Number(cab), ks = [];
+    for (var i = 0; i < nP; i++) ks.push(k + '_' + i);
+    var partes = cache.getAll(ks), txt = '';
+    for (i = 0; i < nP && partes[ks[i]] != null; i++) txt += partes[ks[i]];
+    if (i === nP) return JSON.parse(txt);
+  }
+  var r = fn();
+  if (!r || !r.ok) return r;
+  var t = JSON.stringify(r, function (kk, v) { return (this[kk] instanceof Date) ? fmtFecha(this[kk]) : v; });
+  var T = 90000, obj = {}, n = Math.ceil(t.length / T);
+  if (n <= 20) {
+    for (var j = 0; j < n; j++) obj[k + '_' + j] = t.slice(j * T, (j + 1) * T);
+    obj[k] = String(n);
+    try { cache.putAll(obj, 3600); } catch (e) { console.error('cache: ' + e); }
+  }
+  return JSON.parse(t);
+}
+function invalidarCache_() { PropertiesService.getScriptProperties().setProperty('CACHE_VER', String(Date.now())); }
 
 function agregarFilas_(ss, nombre, objs) {
   if (!objs.length) return;
