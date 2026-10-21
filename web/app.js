@@ -1,7 +1,8 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbzI1b3roxHz-4uF6bcwL0jqlOIq_5Erw8gqiq-DdgWm8G_cVLSgeGV3wGzrMhMAKRCieQ/exec';
 const $ = s => document.querySelector(s);
 const DEV = location.search.includes('dev=1');
-let DATA = null, VISTA = 'tablero';
+let DATA = null, VISTA = 'tablero', EN_FICHA = null, STATS = null;
+const FICHAS = {}; // fichas ya vistas: se muestran al instante y se refrescan por detrás
 const F = { q: '', etapa: '', oficina: '', quietos: false, orden: 'dias_quieto', asc: false };
 
 async function api(accion, payload) {
@@ -41,13 +42,17 @@ function mostrarCacheSiHay() {
   return true;
 }
 
+let ULTIMO_TXT = '';
 async function cargar() {
   try {
     const nuevo = await api('estado');
+    const txt = JSON.stringify(nuevo);
+    const igual = DATA && txt === ULTIMO_TXT;
+    ULTIMO_TXT = txt;
     guardarCache(nuevo);
-    DATA = nuevo;
-    prepararEstados(DATA);
+    if (!igual) { DATA = nuevo; prepararEstados(DATA); }
     $('#corrida').textContent = DATA.ultima_corrida ? 'Última consulta ' + DATA.ultima_corrida.replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, '$3/$2 $4:$5') : '';
+    if (igual) return; // nada cambió: no se redibuja (no se pierde el scroll ni lo que estaba abierto)
     $('#avisos').innerHTML = DATA.avisos.filter(a => a.nivel === 'ERROR').map(a => `<div class="aviso">${esc(a.mensaje)}</div>`).join('');
     render();
   } catch (e) {
@@ -57,7 +62,7 @@ async function cargar() {
 }
 
 function render() {
-  if (!DATA) return;
+  if (!DATA || EN_FICHA) return; // la actualización automática no te saca de la ficha que estás mirando
   if (VISTA === 'tablero') renderTablero();
   else if (VISTA === 'lista') renderLista();
   else if (VISTA === 'indice') renderIndice();
@@ -66,7 +71,7 @@ function render() {
 
 function irALista(filtros) { Object.assign(F, { q: '', etapa: '', oficina: '', quietos: false }, filtros || {}); activar('lista'); }
 function activar(v, sinHistorial) {
-  VISTA = v;
+  VISTA = v; EN_FICHA = null;
   document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('activo', x.dataset.v === v));
   if (!sinHistorial) history.pushState({ v }, '', '#' + v);
   render(); window.scrollTo(0, 0);
@@ -170,7 +175,8 @@ function filtrosHtml(lista) {
 }
 function enlazarFiltros(redibujar) {
   const inp = $('#f-q');
-  inp.oninput = ev => { F.q = ev.target.value; const pos = inp.selectionStart; redibujar(); const i2 = $('#f-q'); i2.focus(); i2.setSelectionRange(pos, pos); };
+  // Espera a que se deje de tipear un instante antes de redibujar, así no se traba al escribir.
+  inp.oninput = ev => { F.q = ev.target.value; clearTimeout(enlazarFiltros.t); enlazarFiltros.t = setTimeout(() => { const pos = inp.selectionStart; redibujar(); const i2 = $('#f-q'); i2.focus(); i2.setSelectionRange(pos, pos); }, 180); };
   $('#f-etapa').onchange = ev => { F.etapa = ev.target.value; redibujar(); };
   $('#f-of').onchange = ev => { F.oficina = ev.target.value; redibujar(); };
   $('#f-quietos').onchange = ev => { F.quietos = ev.target.checked; redibujar(); };
@@ -232,13 +238,24 @@ function renderIndice() {
 
 async function ficha(exp, sinHistorial) {
   if (!sinHistorial) history.pushState({ v: 'ficha', exp }, '', '#ficha');
+  EN_FICHA = exp;
   window.scrollTo(0, 0);
-  $('#vista').innerHTML = '<p class="vacio">Cargando…</p>';
-  let f;
-  try { f = await api('ficha', { expediente: exp }); } catch (e) { $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; return; }
-  const e = f.estado, u = window.INGECO_USUARIO;
+  // Se muestra enseguida con lo que ya se tiene (la ficha guardada o los datos del listado) y el recorrido llega después.
+  const base = DATA && DATA.estados.find(e => String(e.expediente) === String(exp));
+  const previa = FICHAS[exp] || (base ? { estado: base, movimientos: null } : null);
+  if (previa) pintarFicha(previa); else $('#vista').innerHTML = '<p class="vacio">Cargando…</p>';
+  try {
+    const f = await api('ficha', { expediente: exp });
+    const cambio = JSON.stringify(f) !== JSON.stringify(FICHAS[exp]);
+    FICHAS[exp] = f;
+    if (EN_FICHA === exp && cambio) pintarFicha(f);
+  } catch (e) { if (EN_FICHA === exp && !FICHAS[exp]) $('#vista').innerHTML = `<button class="volver" onclick="history.back()">← Volver</button><p class="vacio">${esc(e.message)}</p>`; }
+}
+
+function pintarFicha(f) {
+  const e = Object.assign({}, f.estado);
   e.ofNombre = e.oficina_actual ? bonitoOf(e.oficina_actual) : '';
-  const movs = f.movimientos.slice().sort((a, b) => fechaKey(a.fecha_pase).localeCompare(fechaKey(b.fecha_pase)));
+  const movs = (f.movimientos || []).slice().sort((a, b) => fechaKey(a.fecha_pase).localeCompare(fechaKey(b.fecha_pase)));
   const sem = semaforo(e);
   $('#vista').innerHTML = `<button class="volver" id="volver">← Volver</button>
     <p class="exp-grande">Expediente ${esc(e.expediente)}</p>
@@ -257,7 +274,7 @@ async function ficha(exp, sinHistorial) {
           </dl>
         </div>
         <div class="card" style="margin-top:16px"><h2>Recorrido</h2>
-          <ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}</b> ${esc(bonitoOf(m.oficina))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || '<li>Sin movimientos registrados</li>'}</ol>
+          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}"><b>${n(m.fecha_pase)}</b> ${esc(bonitoOf(m.oficina))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
           <p><small>En gris: historia importada de la planilla. En negro: detectado por el bot.</small></p>
         </div>
       </div>
@@ -265,10 +282,17 @@ async function ficha(exp, sinHistorial) {
   $('#volver').onclick = () => history.back();
 }
 
+// Estadísticas: se muestran al instante las últimas traídas y se refrescan por detrás.
 async function renderStats() {
-  $('#vista').innerHTML = '<p class="vacio">Cargando…</p>';
-  let s;
-  try { s = await api('estadisticas'); } catch (e) { $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; return; }
+  if (STATS) pintarStats(STATS); else $('#vista').innerHTML = '<p class="vacio">Cargando…</p>';
+  try {
+    const s = await api('estadisticas');
+    const cambio = JSON.stringify(s) !== JSON.stringify(STATS);
+    STATS = s;
+    if (VISTA === 'stats' && !EN_FICHA && cambio) pintarStats(s);
+  } catch (e) { if (!STATS && VISTA === 'stats') $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; }
+}
+function pintarStats(s) {
   const porCanon = {}; s.oficinas.forEach(o => { const k = normOf(o.nombre_canonico); if (!porCanon[k] || Number(o.casos) > Number(porCanon[k].casos)) porCanon[k] = o; });
   const ofs = Object.values(porCanon).filter(o => Number(o.casos)).sort((a, b) => Number(b.mediana_dias) - Number(a.mediana_dias));
   const firmes = ofs.filter(o => Number(o.casos) >= (s.min_casos || 5));
@@ -323,5 +347,12 @@ if (window.INGECO_USUARIO && window.INGECO_USUARIO.es_admin && $('#btn-bot')) {
     setTimeout(() => { bb.disabled = false; bb.textContent = 'Consultar municipio ahora'; }, 4000);
   };
 }
-if (!window.INGECO_USUARIO && !DEV) sinAcceso(); else { mostrarCacheSiHay(); cargar(); setInterval(cargar, 5 * 60 * 1000); }
+if (!window.INGECO_USUARIO && !DEV) sinAcceso();
+else {
+  mostrarCacheSiHay();
+  // Las estadísticas se traen por detrás apenas carga, así la pestaña abre al instante.
+  cargar().then(() => api('estadisticas').then(x => { STATS = x; }).catch(() => { }));
+  setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cargar(); });
+}
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

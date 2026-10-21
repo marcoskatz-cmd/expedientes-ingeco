@@ -5,7 +5,7 @@ function correr(forzado) {
   if (!forzado && !esHorarioHabil_(hoy)) return;
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) { console.log('Ya hay una corrida en curso, salgo'); return; }
-  try { correr_(hoy); } finally { lock.releaseLock(); }
+  try { correr_(hoy); } finally { invalidarCache_(); lock.releaseLock(); }
 }
 
 function correr_(hoy) {
