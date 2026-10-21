@@ -143,3 +143,26 @@ table.tabla td .exp { font-size: 17px; }
 .movs li.cobrado .paso { color: #115e59; font-weight: 700; }
 .movs .coment { color: var(--gris); font-size: 14px; }
 @media (max-width: 600px) { .movs li { grid-template-columns: 1fr; gap: 2px; } }
+/* Índice: una línea por expediente, obra · número · monto */
+.indice { background: #fff; border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; }
+.idx-cab, .idx-fila { display: grid; grid-template-columns: minmax(0, 1fr) 9.5em; column-gap: 10px; align-items: center; padding: 8px 12px; }
+.idx-cab { background: var(--gris-claro); font-weight: 600; font-size: 15px; }
+.idx-cab span { cursor: pointer; user-select: none; }
+.idx-cab .der { text-align: right; display: flex; justify-content: flex-end; gap: 10px; }
+.idx-cab .orden { color: var(--teal); }
+.idx-cab .orden::after { content: ' ▾'; }
+.idx-cab .orden.asc::after { content: ' ▴'; }
+.idx-fila { border-top: 1px solid var(--borde); border-left: 5px solid var(--gris); font-size: 15px; cursor: pointer; min-height: 44px; }
+.idx-fila.teal { border-left-color: var(--teal); }
+.idx-fila.ambar { border-left-color: var(--ambar); }
+.idx-fila .obra { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+.idx-fila .der { text-align: right; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.idx-fila .der .exp { font-size: 14px; }
+.idx-fila .der b { font-size: 15px; }
+@media (min-width: 700px) {
+  .idx-cab, .idx-fila { grid-template-columns: minmax(0, 1fr) 8em 10em; }
+  .idx-cab .der, .idx-fila .der { display: contents; }
+  .idx-fila .der .exp { font-size: 15px; }
+  .idx-fila .der b, .idx-cab .der span:last-child { text-align: right; }
+  .idx-fila .obra { -webkit-line-clamp: 1; }
+}
