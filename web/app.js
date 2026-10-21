@@ -26,7 +26,8 @@ const bonitoOf = t => normOf(t).split(' ').map((w, i) => ACENTOS[w] || (MINUSC[w
 const sinRecibir = e => String(e.estado_pase) === '1';
 const corridaTxt = c => String(c || '').replace(/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/, '$3/$2 $4:$5 h');
 // Sin fecha del municipio: hora en que el bot vio el pase (el municipio no informa la salida).
-// Texto de un pase: "Salió el 21/10/2026 a las 12:15 h de Contaduría General" / "Llegó el 21/10/2026 a las 11:28 h a Tesorería General".
+// Texto de un pase: "Salió el 21/10/2026 a las 12:15 h de Obras Viales con destino a Planeamiento" /
+// "Llegó el 22/10/2026 a las 09:40 h a Planeamiento desde Obras Viales".
 // El municipio no informa la salida: la hora de salida es la hora en que el bot vio el pase (consulta cada hora).
 // pendiente = la oficina todavía no lo recibió (solo el pase actual).
 const elDia = (f, h) => 'el ' + esc(f) + (h ? ' a las ' + esc(h) + ' h' : '');
@@ -38,8 +39,8 @@ function pasoHtml(m, prevOf, pendiente) {
   const [rf, rh] = m.recibido_en ? String(m.recibido_en).split(' ') : (m.hora_pase ? [fp, m.hora_pase] : ['', '']);
   const salidaConocida = m.hora_detectado || pendiente || (rf && rf !== fp);
   const l = [];
-  if (salidaConocida) l.push('Salió ' + elDia(fp, m.hora_detectado) + (prev ? ' de ' + prev : ''));
-  if (rf) l.push('Llegó ' + elDia(rf, rh) + ' a ' + of + (!salidaConocida && prev ? ' desde ' + prev : ''));
+  if (salidaConocida) l.push('Salió ' + elDia(fp, m.hora_detectado) + (prev ? ' de ' + prev : '') + ' con destino a ' + of);
+  if (rf) l.push('Llegó ' + elDia(rf, rh) + ' a ' + of + (prev ? ' desde ' + prev : ''));
   else if (pendiente) l.push('Todavía no llegó a ' + of);
   if (!l.length) l.push('Pasó ' + elDia(fp) + (prev ? ' de ' + prev : '') + ' a ' + of);
   return l.join('<br>');
