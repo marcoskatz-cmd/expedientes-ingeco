@@ -4,11 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ayuda · Expedientes INGECO</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="estilos.css">
+<style>:root{--azul:#1e3a8a;--azul-claro:#2b4fb3;--azul-suave:#e6ecfb;--tinta:#0f1a3d;--teal:#0e8a7a;--teal-suave:#dcf1ee;--ambar:#d98f00;--ambar-suave:#fff1cf;--ambar-texto:#8a5a00;--alerta:#b8410e;--alerta-suave:#fbe6dc;--fondo:#f5f4f0;--fondo-2:#ebe9e3;--superficie:#fff;--texto:#171c2e;--texto-2:#5b6274;--texto-3:#8a90a0;--linea:#e2dfd7;--linea-fuerte:#c9c5bb;--radio:14px;--radio-s:10px;--barra-h:56px;--cuerpo:system-ui,sans-serif;--display:system-ui,sans-serif}[data-ig-volver]{display:none}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://marcoskatz-cmd.github.io/app-ingeco/ingeco.css">
+<script src="https://marcoskatz-cmd.github.io/app-ingeco/ingeco.js" defer></script>
+<link rel="stylesheet" href="estilos.css?v=16">
 </head>
 <body>
-<header><h1>Cómo se usa</h1></header>
+<header><div class="titulo"><div class="marca"><img src="logo.png" alt="INGECO" data-ig-ocultar-en-app><h1>Cómo se usa</h1></div></div></header>
 <main class="ayuda">
 <p><a class="volver" href="./">← Volver</a></p>
 
@@ -25,9 +28,9 @@
 
 <h3>Los colores</h3>
 <ul>
-<li><span class="chip" style="background:#0f766e">teal</span> el expediente se movió hace poco.</li>
-<li><span class="chip" style="background:#b45309">ámbar</span> lleva más días quietos que el umbral (10 días hábiles por defecto). Conviene hacer una gestión.</li>
-<li><span class="chip" style="background:#6b7280">gris</span> sin dato: el portal no lo encontró o la consulta falló. El motivo aparece en la lista.</li>
+<li><span class="chip teal">teal</span> el expediente se movió hace poco.</li>
+<li><span class="chip ambar">ámbar</span> lleva más días quietos que el umbral (10 días hábiles por defecto). Conviene hacer una gestión.</li>
+<li><span class="chip">gris</span> sin dato: el portal no lo encontró o la consulta falló. El motivo aparece en la lista.</li>
 </ul>
 
 <h3>Cómo se calcula la proyección</h3>
