@@ -1,8 +1,8 @@
 // Service worker: guarda los archivos del sistema para que abra al instante y funcione aunque la señal sea mala.
 // Estrategia: devuelve lo guardado y, en paralelo, baja la versión nueva para la próxima vez.
 // Las llamadas a la API (script.google.com) no se guardan acá: eso lo maneja la app con localStorage.
-const CACHE = 'expedientes-v13';
-const ARCHIVOS = ['./', 'index.html', 'app.js?v=13', 'estilos.css?v=13', 'ayuda.html', 'manifest.webmanifest', 'icono.svg'];
+const CACHE = 'expedientes-v14';
+const ARCHIVOS = ['./', 'index.html', 'app.js?v=14', 'estilos.css?v=14', 'ayuda.html', 'manifest.webmanifest', 'icono.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS).catch(() => {})).then(() => self.skipWaiting()));
