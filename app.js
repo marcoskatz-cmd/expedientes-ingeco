@@ -187,7 +187,11 @@ function pasaFiltros(e) {
 // Barra de filtros compartida por Lista e Índice; redibujar() vuelve a pintar la vista actual.
 function filtrosHtml(lista) {
   const etapas = [...new Set(DATA.estados.map(e => e.etapa).filter(Boolean))].sort();
-  const oficinas = {}; DATA.estados.forEach(e => { if (e.ofKey) oficinas[e.ofKey] = e.ofNombre; });
+  // Todas las oficinas conocidas (hoja OFICINAS y rutas), tengan o no expedientes hoy; las estadísticas se piden una vez si faltan.
+  const oficinas = {};
+  if (STATS) { (STATS.oficinas || []).forEach(o => { const k = normOf(o.nombre_canonico); if (k && k !== 'COBRADO') oficinas[k] = bonitoOf(o.nombre_canonico); }); (STATS.rutas || []).forEach(r => { const k = normOf(r.oficina); if (k && !oficinas[k]) oficinas[k] = bonitoOf(r.oficina); }); }
+  else if (!filtrosHtml.pidiendo) { filtrosHtml.pidiendo = true; api('estadisticas').then(s => { STATS = s; if (!EN_FICHA && (VISTA === 'lista' || VISTA === 'indice')) (VISTA === 'lista' ? renderLista : renderIndice)(); }).catch(() => {}); }
+  DATA.estados.forEach(e => { if (e.ofKey) oficinas[e.ofKey] = e.ofNombre; });
   return `<div class="filtros">
       <input id="f-q" placeholder="Buscar obra, expediente, oficina o tipo" value="${esc(F.q)}">
       <select id="f-etapa"><option value="">Todas las etapas</option>${etapas.map(x => `<option ${F.etapa === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>
@@ -205,6 +209,8 @@ function enlazarFiltros(redibujar) {
   $('#f-quietos').onchange = ev => { F.quietos = ev.target.checked; redibujar(); };
 }
 
+// Cartel cuando no hay nada: si la culpa es solo la oficina elegida, se dice así.
+const vacioTxt = () => F.oficina && !F.q && !F.etapa && !F.quietos ? 'No hay expedientes en esta oficina' : 'Nada que mostrar';
 function filtrar() {
   const lista = DATA.estados.filter(pasaFiltros);
   const col = F.orden;
@@ -233,8 +239,8 @@ function renderLista() {
       <span>${num(e.dias_restantes_est) != null ? 'Faltan ~' + n(e.dias_restantes_est) + ' días hábiles (' + n(e.fecha_cobro_est) + ')' + (e.calidad_estimacion === 'debil' ? ' · estimación débil' : '') : esc(e.etapa || '')}</span></li>`).join('');
   $('#vista').innerHTML = `
     ${filtrosHtml(lista)}
-    <table class="tabla"><thead><tr>${th}</tr></thead><tbody>${filas || '<tr><td colspan="8" class="vacio">Nada que mostrar</td></tr>'}</tbody></table>
-    <ul class="lista">${cards || '<li class="vacio">Nada que mostrar</li>'}</ul>`;
+    <table class="tabla"><thead><tr>${th}</tr></thead><tbody>${filas || `<tr><td colspan="8" class="vacio">${vacioTxt()}</td></tr>`}</tbody></table>
+    <ul class="lista">${cards || `<li class="vacio">${vacioTxt()}</li>`}</ul>`;
   enlazarFiltros(renderLista);
   document.querySelectorAll('th[data-col]').forEach(t => t.onclick = () => { if (F.orden === t.dataset.col) F.asc = !F.asc; else { F.orden = t.dataset.col; F.asc = t.dataset.col === 'nombre_obra' || t.dataset.col === 'fecha_cobro_est' || t.dataset.col === 'expediente'; } renderLista(); });
   document.querySelectorAll('[data-exp]').forEach(el => el.onclick = () => ficha(el.dataset.exp));
@@ -252,7 +258,7 @@ function renderIndice() {
     ${filtrosHtml(lista)}
     <div class="indice">
       <div class="idx-cab">${cab}</div>
-      ${lista.map(e => `<div class="idx-fila ${semaforo(e)}" data-exp="${esc(e.expediente)}"><span class="obra" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra) || '—'}</span><span class="der"><span class="exp">${esc(e.expediente)}</span><b>${pesos(e.monto)}</b></span></div>`).join('') || '<p class="vacio">Nada que mostrar</p>'}
+      ${lista.map(e => `<div class="idx-fila ${semaforo(e)}" data-exp="${esc(e.expediente)}"><span class="obra" title="${esc(e.nombre_obra)}">${esc(e.nombre_obra) || '—'}</span><span class="der"><span class="exp">${esc(e.expediente)}</span><b>${pesos(e.monto)}</b></span></div>`).join('') || `<p class="vacio">${vacioTxt()}</p>`}
     </div>`;
   enlazarFiltros(renderIndice);
   document.querySelectorAll('.idx-cab [data-col]').forEach(t => t.onclick = () => { if (IDX.orden === t.dataset.col) IDX.asc = !IDX.asc; else { IDX.orden = t.dataset.col; IDX.asc = t.dataset.col !== 'monto'; } renderIndice(); });
