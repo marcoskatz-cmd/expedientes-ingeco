@@ -259,6 +259,23 @@ function renderIndice() {
   document.querySelectorAll('.idx-fila').forEach(el => el.onclick = () => ficha(el.dataset.exp));
 }
 
+// Pases seguidos dentro de la misma oficina (de un escritorio a otro) se muestran como un solo paso del recorrido.
+function pasosRecorrido(movs) {
+  const out = [];
+  movs.forEach(m => { const ult = out[out.length - 1]; if (ult && normOf(ult.m.oficina) === normOf(m.oficina) && normOf(m.oficina) !== 'COBRADO') ult.internos.push(m); else out.push({ m, internos: [] }); });
+  return out;
+}
+function oficinaAnterior(movs, oficina) {
+  for (let i = movs.length - 1; i >= 0; i--) if (normOf(movs[i].oficina) !== normOf(oficina)) return movs[i].oficina;
+  return '';
+}
+// La llegada a la oficina actual es el primer movimiento de la última racha en esa oficina, no el último pase interno.
+function llegadaActual(e, movs) {
+  const g = pasosRecorrido(movs).pop();
+  if (g && normOf(g.m.oficina) === normOf(e.oficina_actual) && g.internos.length) return g.m;
+  return { oficina: e.oficina_actual, fecha_pase: e.desde, hora_pase: e.hora_pase, recibido_en: e.recibido_en, hora_detectado: e.hora_detectado };
+}
+
 async function ficha(exp, sinHistorial) {
   if (!sinHistorial) history.pushState({ v: 'ficha', exp }, '', '#ficha');
   EN_FICHA = exp;
@@ -290,14 +307,14 @@ function pintarFicha(f) {
             <dt>Expediente</dt><dd>${esc(e.expediente)}</dd>
             <dt>Monto</dt><dd>${pesos(e.monto)}${!Number(e.monto) ? ' <small>(sin monto en la planilla)</small>' : ''}</dd>
             <dt>Tipo</dt><dd>${esc(e.tipo_contrato || '—')}</dd>
-            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> · ' + n(e.dias_quieto) + ' días hábiles<br>' + pasoHtml({ oficina: e.oficina_actual, fecha_pase: e.desde, hora_pase: e.hora_pase, recibido_en: e.recibido_en, hora_detectado: e.hora_detectado }, movs.length > 1 ? movs[movs.length - 2].oficina : '', sinRecibir(e)) : 'Sin dato: ' + esc(e.error)}</dd>
+            <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> · ' + n(e.dias_quieto) + ' días hábiles<br>' + pasoHtml(llegadaActual(e, movs), oficinaAnterior(movs, e.oficina_actual), sinRecibir(e)) : 'Sin dato: ' + esc(e.error)}</dd>
             <dt>Etapa</dt><dd>${esc(e.etapa || '—')}${e.paso_en_ruta ? ' <small>(paso ' + n(e.paso_en_ruta) + ' de la ruta)</small>' : ''}</dd>
             <dt>Cobro estimado</dt><dd>${num(e.dias_restantes_est) != null ? '<b>' + n(e.fecha_cobro_est) + '</b> · faltan ~' + n(e.dias_restantes_est) + ' días hábiles' + (e.calidad_estimacion === 'debil' ? ' <span class="chip debil">estimación débil</span>' : '') : 'Sin proyección' + (e.etapa === 'Fuera de ruta' ? ': la oficina no está en la ruta de cobro' : '')}</dd>
             <dt>Última consulta</dt><dd>${DATA && DATA.ultima_corrida ? corridaTxt(DATA.ultima_corrida) : n(e.ultima_consulta)}</dd>
           </dl>
         </div>
         <div class="card" style="margin-top:16px"><h2>Recorrido</h2>
-          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${movs.map((m, i) => `<li class="${esc(m.origen)}${i === movs.length - 1 ? ' actual' : ''}">${pasoHtml(m, i ? movs[i - 1].oficina : '', i === movs.length - 1 && sinRecibir(e))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}</li>`).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
+          ${f.movimientos ? '' : '<p class="vacio">Cargando recorrido…</p>'}<ol class="tiempo">${pasosRecorrido(movs).map((g, i, todos) => { const m = g.m, ult = i === todos.length - 1; return `<li class="${esc(m.origen)}${ult ? ' actual' : ''}">${pasoHtml(m, i ? todos[i - 1].m.oficina : '', ult && !g.internos.length && sinRecibir(e))}${m.dias_en_oficina_anterior !== '' && m.dias_en_oficina_anterior != null ? ' <small>(' + n(m.dias_en_oficina_anterior) + ' días en la anterior)</small>' : ''}${m.descripcion_api ? '<span class="coment">' + esc(m.descripcion_api) + '</span>' : ''}${g.internos.length ? '<small class="internos">Movimientos internos dentro de la oficina: ' + g.internos.map(x => { const [rf, rh] = x.recibido_en ? String(x.recibido_en).split(' ') : [x.fecha_pase, x.hora_pase]; return esc(String(rf || '').slice(0, 5)) + (rh ? ' ' + esc(rh) + ' h' : ''); }).join(' · ') + '</small>' : ''}</li>`; }).join('') || (f.movimientos ? '<li>Sin movimientos registrados</li>' : '')}</ol>
           <p><small>En gris: historia importada de la planilla. En negro: detectado por el bot.</small></p>
         </div>
       </div>

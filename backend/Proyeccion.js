@@ -22,6 +22,7 @@ function medianasPorOficina(movimientos, mapaCanon) {
     for (var i = 1; i < lista.length; i++) {
       var d = Number(lista[i].dias_en_oficina_anterior);
       if (lista[i].dias_en_oficina_anterior === '' || isNaN(d)) continue;
+      if (normOficina(lista[i].oficina) === normOficina(lista[i - 1].oficina)) continue; // pase interno: no es una salida
       var of = canonizar(lista[i - 1].oficina, mapaCanon);
       (acum[of] = acum[of] || []).push(d);
     }
