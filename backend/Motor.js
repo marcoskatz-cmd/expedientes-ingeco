@@ -45,23 +45,26 @@ function compararEstado(previo, lectura, exp, hoy) {
     var mismaFecha = !lectura.fechaPase || (!!desdePrev && desdePrev.getTime() === fechaPase.getTime());
     cambio = !previo || !mismaOficina || !mismaFecha;
   }
+  // Pase interno: nuevo pase dentro de la misma oficina (de un escritorio a otro). Se registra, pero el expediente sigue en
+  // la misma oficina: no reinicia los días ni parte la estadía en dos para las medianas.
+  var interno = cambio && mismaOficina && !!desdePrev;
   var movimiento = null;
   if (cambio) {
     movimiento = {
       id: nuevoId(), expediente: exp.clave, fecha_pase: fmtFecha(fechaPase), oficina: lectura.oficina,
       descripcion_api: (lectura.comentarios || lectura.asunto || '').slice(0, 300), detectado_en: fmtFecha(hoy), origen: 'bot',
-      dias_en_oficina_anterior: (previo && desdePrev) ? diasHabiles(desdePrev, fechaPase) : '',
+      dias_en_oficina_anterior: (previo && desdePrev && !interno) ? diasHabiles(desdePrev, fechaPase) : '',
       hora_pase: lectura.hora || '', id_curso: lectura.idCurso === undefined ? '' : lectura.idCurso,
       recibido_en: recibidoTexto_(lectura),
       hora_detectado: lectura.fechaPase ? '' : horaDe_(hoy)
     };
   }
-  var desde = cambio ? fechaPase : desdePrev;
+  var desde = cambio && !interno ? fechaPase : desdePrev;
   var estado = {
     expediente: exp.clave, nombre_obra: exp.nombre, monto: exp.monto, tipo_contrato: exp.tipo, prioridad: exp.prioridad,
     oficina_actual: cambio ? lectura.oficina : previo.oficina_actual,
     desde: fmtFecha(desde), dias_quieto: diasHabiles(desde, hoy),
-    alerta_enviada_en: cambio ? '' : (previo.alerta_enviada_en || ''),
+    alerta_enviada_en: cambio && !interno ? '' : (previo.alerta_enviada_en || ''),
     ultima_consulta: fmtFecha(hoy), error: '',
     // hora_pase acompaña a 'desde': si el pase llegó después, la hora de llegada va en recibido_en.
     hora_pase: cambio ? (lectura.hora || '') : ((previo && previo.hora_pase) || ''),
@@ -125,11 +128,20 @@ function unirDuplicados(movs) {
   return { borrar: borrar, cambios: cambios, desde: desde };
 }
 
+// Desde cuándo está el expediente en su oficina actual según los movimientos: el primero de la última racha seguida en
+// esa misma oficina (los pases internos no cuentan como llegada). Corrige los estados que un pase interno había reiniciado.
+function inicioEstadia(movsExp, oficina) {
+  var l = movsExp.slice().sort(function (a, b) { return parseFecha(a.fecha_pase) - parseFecha(b.fecha_pase); });
+  var n = normOficina(oficina), ini = null;
+  for (var i = l.length - 1; i >= 0 && normOficina(l[i].oficina) === n; i--) ini = l[i];
+  return ini ? parseFecha(ini.fecha_pase) : null;
+}
+
 function nuevoId() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
 if (typeof module !== 'undefined') {
   var P_ = require('./Parse.js'); parseFecha = P_.parseFecha; fmtFecha = P_.fmtFecha; normOficina = P_.normOficina; diasHabiles = P_.diasHabiles;
-  module.exports = { interpretarRespuesta, compararEstado, previoDesdeMovimientos, cerrarCobrados, unirDuplicados, nuevoId };
+  module.exports = { interpretarRespuesta, compararEstado, previoDesdeMovimientos, cerrarCobrados, unirDuplicados, inicioEstadia, nuevoId };
 }

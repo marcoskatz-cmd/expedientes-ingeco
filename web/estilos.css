@@ -188,3 +188,4 @@ table.tabla td .exp { font-size: 17px; }
   .acciones button { padding: 0 10px; font-size: 14px; }
   .tile b { white-space: normal; font-size: 22px; line-height: 1.1; overflow-wrap: anywhere; }
 }
+.tiempo small.internos { display: block; color: var(--gris); font-size: 14px; margin-top: 2px; }

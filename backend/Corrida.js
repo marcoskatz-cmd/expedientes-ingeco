@@ -81,8 +81,13 @@ function correr_(hoy) {
   var stats = medianasPorOficina(todosMovs, mapaCanon);
   var rutas = leerHoja_(ssD, 'RUTAS');
   var cfg = leerConfig_();
+  var movsPorExp = {};
+  todosMovs.forEach(function (m) { (movsPorExp[String(m.expediente)] = movsPorExp[String(m.expediente)] || []).push(m); });
   estados.forEach(function (e) {
     if (!e.oficina_actual) return;
+    // Si un pase interno había reiniciado los días, vuelven a contar desde que llegó a la oficina.
+    var ini = inicioEstadia(movsPorExp[String(e.expediente)] || [], e.oficina_actual), d = parseFecha(e.desde);
+    if (ini && d && ini < d) { e.desde = fmtFecha(ini); e.dias_quieto = diasHabiles(ini, hoy); }
     Object.assign(e, proyectar(e, rutas, stats, hoy, CFG.MIN_CASOS_MEDIANA, mapaCanon));
     var n = normOficina(e.oficina_actual);
     if (!mapaCanon[n] && !rutas.some(function (r) { return normOficina(r.oficina) === n; })) log_('AVISO', e.expediente, 'Oficina nueva sin mapear: ' + e.oficina_actual);

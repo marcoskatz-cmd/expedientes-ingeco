@@ -47,12 +47,29 @@ test('cambio de oficina genera movimiento con días en la anterior y limpia aler
   assert.strictEqual(r.estado.alerta_enviada_en, '');
   assert.strictEqual(r.estado.desde, '14/10/2026');
 });
-test('misma oficina pero fecha de pase nueva → movimiento (pase interno)', () => {
-  const previo = { oficina_actual: 'Fiscalía', desde: '01/10/2026', alerta_enviada_en: '' };
+test('misma oficina pero fecha de pase nueva → movimiento (pase interno) sin reiniciar los días', () => {
+  const previo = { oficina_actual: 'Fiscalía', desde: '01/10/2026', alerta_enviada_en: 'x' };
   const lect = { ok: true, oficina: 'Fiscalía', oficinaNorm: 'FISCALIA', fechaPase: new Date(2026, 9, 14), asunto: 'a' };
   const r = M.compararEstado(previo, lect, exp, hoy);
   assert.strictEqual(r.cambio, true);
+  assert.strictEqual(r.movimiento.dias_en_oficina_anterior, '');
+  assert.strictEqual(r.estado.desde, '01/10/2026');
+  assert.strictEqual(r.estado.alerta_enviada_en, 'x');
+});
+test('pase interno por número de curso nuevo en la misma oficina no reinicia los días', () => {
+  const previo = { oficina_actual: 'Contaduría General', desde: '14/10/2026', id_curso: 10, recibido_en: '14/10/2026 09:00' };
+  const lect = { ok: true, oficina: 'CONTADURIA GENERAL', oficinaNorm: 'CONTADURIA GENERAL', fechaPase: new Date(2026, 9, 15), hora: '08:24', asunto: 'a', idCurso: 11 };
+  const r = M.compararEstado(previo, lect, exp, hoy);
+  assert.strictEqual(r.cambio, true);
   assert.strictEqual(r.estado.desde, '14/10/2026');
+});
+test('inicioEstadia: primer movimiento de la última racha en la misma oficina', () => {
+  const movs = [
+    { fecha_pase: '01/10/2026', oficina: 'Fiscalía' }, { fecha_pase: '14/10/2026', oficina: 'Contaduría General' },
+    { fecha_pase: '21/10/2026', oficina: 'CONTADURIA GENERAL' }, { fecha_pase: '22/10/2026', oficina: 'Contaduría General' }];
+  const d = M.inicioEstadia(movs, 'Contaduría General');
+  assert.strictEqual(d.getDate(), 14);
+  assert.strictEqual(M.inicioEstadia(movs, 'Tesorería'), null);
 });
 test('nuevoId distinto cada vez', () => assert.notStrictEqual(M.nuevoId(), M.nuevoId()));
 test('previoDesdeMovimientos toma el último movimiento de cada expediente', () => {
