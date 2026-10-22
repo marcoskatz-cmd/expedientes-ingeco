@@ -4,7 +4,7 @@
 const CACHE = 'expedientes-v22';
 const ARCHIVOS = ['./', 'index.html', 'app.js?v=22', 'estilos.css?v=22', 'ayuda.html', 'manifest.webmanifest', 'icono.svg', 'logo.png'];
 // Estilo común de la App INGECO: red primero (siempre la última), caché solo sin señal.
-const COMUN = 'https://marcoskatz-cmd.github.io/app-ingeco/ingeco.';
+const COMUN = 'https://app.ingecosa.com.ar/ingeco.';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS).catch(() => {})).then(() => self.skipWaiting()));
