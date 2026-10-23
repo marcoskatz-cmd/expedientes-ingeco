@@ -2,6 +2,10 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzI1b3roxHz-4uF6bcwL0jq
 const $ = s => document.querySelector(s);
 const DEV = location.search.includes('dev=1');
 let DATA = null, VISTA = 'tablero', EN_FICHA = null, STATS = null;
+// Estadísticas guardadas en este dispositivo: se muestran al instante y se refrescan por detrás.
+const STATS_KEY = 'expedientes_stats_v1';
+try { STATS = JSON.parse(localStorage.getItem(STATS_KEY) || 'null'); } catch (e) { STATS = null; }
+function guardarStats(s) { STATS = s; try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch (e) { } }
 const FICHAS = {}; // fichas ya vistas: se muestran al instante y se refrescan por detrás
 const F = { q: '', etapa: '', oficina: '', quietos: false, orden: 'dias_quieto', asc: false };
 
@@ -190,7 +194,7 @@ function filtrosHtml(lista) {
   // Todas las oficinas conocidas (hoja OFICINAS y rutas), tengan o no expedientes hoy; las estadísticas se piden una vez si faltan.
   const oficinas = {};
   if (STATS) { (STATS.oficinas || []).forEach(o => { const k = normOf(o.nombre_canonico); if (k && k !== 'COBRADO') oficinas[k] = bonitoOf(o.nombre_canonico); }); (STATS.rutas || []).forEach(r => { const k = normOf(r.oficina); if (k && !oficinas[k]) oficinas[k] = bonitoOf(r.oficina); }); }
-  else if (!filtrosHtml.pidiendo) { filtrosHtml.pidiendo = true; api('estadisticas').then(s => { STATS = s; if (!EN_FICHA && (VISTA === 'lista' || VISTA === 'indice')) (VISTA === 'lista' ? renderLista : renderIndice)(); }).catch(() => {}); }
+  else if (!filtrosHtml.pidiendo) { filtrosHtml.pidiendo = true; api('estadisticas').then(s => { guardarStats(s); if (!EN_FICHA && (VISTA === 'lista' || VISTA === 'indice')) (VISTA === 'lista' ? renderLista : renderIndice)(); }).catch(() => {}); }
   DATA.estados.forEach(e => { if (e.ofKey) oficinas[e.ofKey] = e.ofNombre; });
   return `<div class="filtros">
       <input id="f-q" placeholder="Buscar obra, expediente, oficina o tipo" value="${esc(F.q)}">
@@ -334,7 +338,7 @@ async function renderStats() {
   try {
     const s = await api('estadisticas');
     const cambio = JSON.stringify(s) !== JSON.stringify(STATS);
-    STATS = s;
+    guardarStats(s);
     if (VISTA === 'stats' && !EN_FICHA && cambio) pintarStats(s);
   } catch (e) { if (!STATS && VISTA === 'stats') $('#vista').innerHTML = `<p class="vacio">${esc(e.message)}</p>`; }
 }
@@ -397,7 +401,7 @@ if (!window.INGECO_USUARIO && !DEV) sinAcceso();
 else {
   mostrarCacheSiHay();
   // Las estadísticas se traen por detrás apenas carga, así la pestaña abre al instante.
-  cargar().then(() => api('estadisticas').then(x => { STATS = x; }).catch(() => { }));
+  cargar().then(() => api('estadisticas').then(x => { guardarStats(x); }).catch(() => { }));
   setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 5 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cargar(); });
 }
