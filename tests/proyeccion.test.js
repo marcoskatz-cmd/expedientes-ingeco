@@ -95,3 +95,15 @@ test('llegadasPorOficina cuenta expedientes distintos que pasaron por cada ofici
   const r = Pr.llegadasPorOficina(movs, {});
   assert.deepStrictEqual(r, { 'CONTADURIA': 2, 'TESORERIA GENERAL': 2 });
 });
+
+test('siguienteOficina: la próxima distinta de la actual en la ruta', () => {
+  const P = require('../backend/Proyeccion.js');
+  const rutas = [
+    { tipo_contrato: '*', orden: 1, oficina: 'MESA' }, { tipo_contrato: '*', orden: 2, oficina: 'CONTADURIA' },
+    { tipo_contrato: '*', orden: 3, oficina: 'CONTADURIA' }, { tipo_contrato: '*', orden: 4, oficina: 'TESORERIA' }
+  ];
+  assert.strictEqual(P.siguienteOficina({ oficina_actual: 'MESA' }, rutas, {}), 'CONTADURIA');
+  assert.strictEqual(P.siguienteOficina({ oficina_actual: 'CONTADURIA' }, rutas, {}), 'TESORERIA');
+  assert.strictEqual(P.siguienteOficina({ oficina_actual: 'TESORERIA' }, rutas, {}), '');
+  assert.strictEqual(P.siguienteOficina({ oficina_actual: 'OTRA' }, rutas, {}), '');
+});
