@@ -49,7 +49,8 @@ function armarResumen(estados, movimientos, hoy, umbral) {
   if (sinDato) t.push('• Sin dato del municipio: ' + sinDato);
   t.push('', 'QUIETOS MÁS DE ' + umbral + ' DÍAS HÁBILES (' + quietos.length + ')');
   quietos.forEach(function (e) { t.push('• ' + e.expediente + ' ' + (e.nombre_obra || '') + ': ' + e.dias_quieto + ' días en ' + e.oficina_actual); });
-  t.push('', 'Ver en la app INGECO → Expedientes: https://marcoskatz-cmd.github.io/expedientes-ingeco/');
+  t.push('', 'Información obtenida por la app de Expedientes de INGECO.');
+  t.push('Ver en la app INGECO → Expedientes: https://marcoskatz-cmd.github.io/expedientes-ingeco/');
 
   // HTML: azul / ámbar, sin rojo-verde
   var th = 'style="text-align:left;padding:6px 8px;border-bottom:2px solid #1f4e79;color:#1f4e79"';
@@ -68,7 +69,8 @@ function armarResumen(estados, movimientos, hoy, umbral) {
   h += tabla(['Oficina', 'Expedientes', 'Monto'], filasOf);
   h += '<h3 style="color:#b36b00">Quietos más de ' + umbral + ' días hábiles (' + quietos.length + ')</h3>';
   h += quietos.length ? tabla(['Expediente', 'Obra', 'Oficina', 'Días', 'Monto'], quietos.map(function (e) { return [e.expediente, e.nombre_obra, e.oficina_actual, e.dias_quieto, pesos_(e.monto)]; })) : '<p>Ninguno.</p>';
-  h += '<p style="margin-top:20px"><a href="https://marcoskatz-cmd.github.io/expedientes-ingeco/" style="color:#1f4e79">Ver en la app INGECO → Expedientes</a></p></div>';
+  h += '<p style="margin-top:20px"><a href="https://marcoskatz-cmd.github.io/expedientes-ingeco/" style="color:#1f4e79">Ver en la app INGECO → Expedientes</a></p>';
+  h += '<p style="margin-top:24px;padding-top:8px;border-top:1px solid #ddd;color:#666;font-size:12px">Información obtenida por la app de Expedientes de INGECO · ' + esc_(hoy) + '</p></div>';
 
   return { asunto: asunto, texto: t.join('\n'), html: h, cantMov: movs.length };
 }
@@ -91,7 +93,10 @@ function enviarResumenDiario(forzado) {
   var mails = destinatariosResumen(cfg, CFG.MAILS_RESUMEN_DEFAULT);
   if (!mails.length) { log_('AVISO', '', 'Resumen diario: no hay destinatarios'); return; }
   try {
-    MailApp.sendEmail({ to: mails.join(','), subject: r.asunto, body: r.texto, htmlBody: r.html, name: 'Expedientes INGECO' });
+    // El resumen va como PDF adjunto; el cuerpo solo lo presenta.
+    var pdf = Utilities.newBlob('<html><head><meta charset="utf-8"></head><body>' + r.html + '</body></html>', 'text/html', 'resumen.html').getAs('application/pdf').setName('Expedientes INGECO - resumen ' + fmtFecha(ahora).replace(/\//g, '-') + '.pdf');
+    var cuerpo = 'Adjunto el resumen de expedientes a cobrar del ' + fmtFecha(ahora) + ' (' + (r.cantMov ? r.cantMov + ' movimiento(s) hoy' : 'sin movimientos hoy') + ').\n\nInformación obtenida por la app de Expedientes de INGECO.';
+    MailApp.sendEmail({ to: mails.join(','), subject: r.asunto, body: cuerpo, attachments: [pdf], name: 'Expedientes INGECO' });
     log_('INFO', '', 'Resumen diario enviado a ' + mails.length + ' destinatario(s), ' + r.cantMov + ' movimientos');
   } catch (e) { log_('ERROR', '', 'Resumen diario falló: ' + e.message); }
 }
