@@ -47,17 +47,37 @@ function llegadasPorOficina(movimientos, mapaCanon) {
 
 var RUTA_FALLBACK_ = 'Contratación Directa';
 
-function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
+// Ruta esperada para el tipo de contrato del expediente, ordenada. debil = tuvo que usar la de Contratación Directa.
+function rutaDe(estado, rutas) {
   var tipo = normOficina(estado.tipo_contrato);
   var ruta = rutas.filter(function (r) { return normOficina(r.tipo_contrato) === tipo; });
-  var calidad = 'buena';
+  var debil = false;
   // Sin ruta propia: primero la ruta general "*" (no penaliza), si no la de Contratación Directa (débil).
   if (!ruta.length) ruta = rutas.filter(function (r) { return String(r.tipo_contrato).trim() === '*'; });
-  if (!ruta.length) { ruta = rutas.filter(function (r) { return normOficina(r.tipo_contrato) === normOficina(RUTA_FALLBACK_); }); calidad = 'debil'; }
-  ruta = ruta.slice().sort(function (a, b) { return Number(a.orden) - Number(b.orden); });
+  if (!ruta.length) { ruta = rutas.filter(function (r) { return normOficina(r.tipo_contrato) === normOficina(RUTA_FALLBACK_); }); debil = true; }
+  return { pasos: ruta.slice().sort(function (a, b) { return Number(a.orden) - Number(b.orden); }), debil: debil };
+}
+
+function indiceEnRuta_(pasos, oficina, mapaCanon) {
+  var actual = canonizar(oficina, mapaCanon), idx = -1;
+  pasos.forEach(function (r, i) { if (idx < 0 && canonizar(r.oficina, mapaCanon) === actual) idx = i; });
+  return idx;
+}
+
+/** Próxima oficina según la ruta: la siguiente distinta de la actual. '' si está fuera de ruta o en el último paso. */
+function siguienteOficina(estado, rutas, mapaCanon) {
+  if (!estado.oficina_actual) return '';
+  var pasos = rutaDe(estado, rutas).pasos, idx = indiceEnRuta_(pasos, estado.oficina_actual, mapaCanon);
+  if (idx < 0) return '';
   var actual = canonizar(estado.oficina_actual, mapaCanon);
-  var idx = -1;
-  ruta.forEach(function (r, i) { if (idx < 0 && canonizar(r.oficina, mapaCanon) === actual) idx = i; });
+  for (var i = idx + 1; i < pasos.length; i++) if (canonizar(pasos[i].oficina, mapaCanon) !== actual) return pasos[i].oficina;
+  return '';
+}
+
+function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
+  var rd = rutaDe(estado, rutas), ruta = rd.pasos;
+  var calidad = rd.debil ? 'debil' : 'buena';
+  var idx = indiceEnRuta_(ruta, estado.oficina_actual, mapaCanon);
   if (idx < 0) return { etapa: 'Fuera de ruta', paso_en_ruta: '', dias_restantes_est: '', fecha_cobro_est: '', calidad_estimacion: 'debil' };
 
   function diasDe(paso) {
@@ -77,5 +97,5 @@ function proyectar(estado, rutas, stats, hoy, minCasos, mapaCanon) {
 
 if (typeof module !== 'undefined') {
   var P_ = require('./Parse.js'); normOficina = P_.normOficina; parseFecha = P_.parseFecha; fmtFecha = P_.fmtFecha; sumarDiasHabiles = P_.sumarDiasHabiles;
-  module.exports = { mediana, canonizar, medianasPorOficina, llegadasPorOficina, proyectar };
+  module.exports = { mediana, canonizar, medianasPorOficina, llegadasPorOficina, proyectar, rutaDe, siguienteOficina };
 }
