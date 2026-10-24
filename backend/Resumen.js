@@ -44,7 +44,8 @@ function armarResumen(estados, movimientos, hoy, umbral, siguiente) {
   fm.forEach(function (r) { t.push('• ' + r.exp + ' ' + r.obra + ': ' + r.que + (r.det ? ' (' + r.det + ')' : '')); });
   t.push('', 'PENDIENTES (' + pend.length + ')');
   pend.forEach(function (r) { t.push('• ' + r.exp + ' ' + r.obra + ': ' + r.oficina + (r.dias ? ', ' + r.dias + ' días' + (r.quieto ? ' (QUIETO)' : '') : '') + (r.prox ? ' → ' + r.prox : '') + (r.monto ? ' — ' + r.monto : '')); });
-  t.push('', 'Ver en la app INGECO → Expedientes: https://marcoskatz-cmd.github.io/expedientes-ingeco/');
+  t.push('', 'Información obtenida por la app de Expedientes de INGECO.');
+  t.push('Ver en la app INGECO → Expedientes: https://marcoskatz-cmd.github.io/expedientes-ingeco/');
 
   // HTML compacto para que entre en una carilla. Azul / ámbar, sin rojo-verde.
   var th = 'style="text-align:left;padding:3px 5px;border-bottom:2px solid #1f4e79;color:#1f4e79"';
@@ -64,7 +65,8 @@ function armarResumen(estados, movimientos, hoy, umbral, siguiente) {
   h += tabla(['Expediente', 'Obra', 'Está en', 'Días', 'Próxima oficina', 'Monto'],
     pend.map(function (r) { return [r.exp, r.obra, r.oficina, r.dias, r.prox, r.monto]; }), pend.map(function (r) { return r.quieto; }));
   if (cantQuietos) h += '<div style="color:#8a5300;margin-top:4px">Fondo ámbar: quieto más de ' + umbral + ' días hábiles.</div>';
-  h += '<p style="margin-top:10px"><a href="https://marcoskatz-cmd.github.io/expedientes-ingeco/" style="color:#1f4e79">Ver en la app INGECO → Expedientes</a></p></div>';
+  h += '<p style="margin-top:10px"><a href="https://marcoskatz-cmd.github.io/expedientes-ingeco/" style="color:#1f4e79">Ver en la app INGECO → Expedientes</a></p>';
+  h += '<p style="margin-top:12px;padding-top:6px;border-top:1px solid #ddd;color:#666;font-size:11px">Información obtenida por la app de Expedientes de INGECO · ' + esc_(hoy) + '</p></div>';
 
   return { asunto: asunto, texto: t.join('\n'), html: h, cantMov: movs.length };
 }
@@ -91,7 +93,10 @@ function enviarResumenDiario(forzado) {
   var mails = destinatariosResumen(cfg, CFG.MAILS_RESUMEN_DEFAULT);
   if (!mails.length) { log_('AVISO', '', 'Resumen diario: no hay destinatarios'); return; }
   try {
-    MailApp.sendEmail({ to: mails.join(','), subject: r.asunto, body: r.texto, htmlBody: r.html, name: 'Expedientes INGECO' });
+    // El resumen va como PDF adjunto; el cuerpo solo lo presenta.
+    var pdf = Utilities.newBlob('<html><head><meta charset="utf-8"></head><body>' + r.html + '</body></html>', 'text/html', 'resumen.html').getAs('application/pdf').setName('Expedientes INGECO - resumen ' + fmtFecha(ahora).replace(/\//g, '-') + '.pdf');
+    var cuerpo = 'Adjunto el resumen de expedientes a cobrar del ' + fmtFecha(ahora) + ' (' + (r.cantMov ? r.cantMov + ' movimiento(s) hoy' : 'sin movimientos hoy') + ').\n\nInformación obtenida por la app de Expedientes de INGECO.';
+    MailApp.sendEmail({ to: mails.join(','), subject: r.asunto, body: cuerpo, attachments: [pdf], name: 'Expedientes INGECO' });
     log_('INFO', '', 'Resumen diario enviado a ' + mails.length + ' destinatario(s), ' + r.cantMov + ' movimientos');
   } catch (e) { log_('ERROR', '', 'Resumen diario falló: ' + e.message); }
 }

@@ -54,7 +54,8 @@ function ultimosMovimientos_(ssD, estados, n) {
     porExp[x].sort(function (a, b) { return parseFecha(a.fecha_pase) - parseFecha(b.fecha_pase); })
       .forEach(function (m, i, l) { anterior[m.id] = i ? l[i - 1].oficina : ''; });
   });
-  var movs = todos.filter(function (m) { return m.origen === 'bot'; });
+  // Solo los expedientes que siguen a cobrar: los cobrados desaparecen del sistema (pedido de Marcos, 23-oct).
+  var movs = todos.filter(function (m) { return m.origen === 'bot' && nombres.hasOwnProperty(String(m.expediente)); });
   var k = function (m) { return fechaClave_(m.detectado_en) + fechaClave_(m.fecha_pase) + String(m.id); };
   movs.sort(function (a, b) { return k(b) < k(a) ? -1 : 1; });
   return movs.slice(0, n).map(function (m) {
