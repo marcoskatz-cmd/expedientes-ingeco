@@ -171,7 +171,7 @@ function lineaMini(act) {
   const est = p => {
     const aca = act.filter(e => e.ofKey === p.k), camino = aca.filter(sinRecibir).length, n0 = aca.length - camino;
     const quieto = aca.some(e => !sinRecibir(e) && Number(e.dias_quieto) > DATA.umbral);
-    return `${camino ? `<span class="lm-camino" title="${camino} en camino a ${esc(p.nombre)}">${camino}</span>` : ''}
+    return `${camino ? `<span class="lm-camino" title="${camino} en camino a ${esc(p.nombre)}"><b>${camino}</b></span>` : ''}
       <button class="lm-est${n0 ? '' : ' vacia'}${quieto ? ' ambar' : ''}" ${aca.length ? `data-of="${esc(p.k)}"` : 'disabled'} title="${esc(p.nombre)}: ${aca.length} expedientes">
         <span class="lm-bola">${n0 || ''}</span><span class="lm-nom">${esc(cortoOf(p.nombre))}</span></button>`;
   };
