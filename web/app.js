@@ -93,6 +93,7 @@ function render() {
   if (VISTA === 'tablero') renderTablero();
   else if (VISTA === 'lista') renderLista();
   else if (VISTA === 'indice') renderIndice();
+  else if (VISTA === 'mapa') renderMapa();
   else renderStats();
 }
 
@@ -194,7 +195,7 @@ function filtrosHtml(lista) {
   // Todas las oficinas conocidas (hoja OFICINAS y rutas), tengan o no expedientes hoy; las estadísticas se piden una vez si faltan.
   const oficinas = {};
   if (STATS) { (STATS.oficinas || []).forEach(o => { const k = normOf(o.nombre_canonico); if (k && k !== 'COBRADO') oficinas[k] = bonitoOf(o.nombre_canonico); }); (STATS.rutas || []).forEach(r => { const k = normOf(r.oficina); if (k && !oficinas[k]) oficinas[k] = bonitoOf(r.oficina); }); }
-  else if (!filtrosHtml.pidiendo) { filtrosHtml.pidiendo = true; api('estadisticas').then(s => { guardarStats(s); if (!EN_FICHA && (VISTA === 'lista' || VISTA === 'indice')) (VISTA === 'lista' ? renderLista : renderIndice)(); }).catch(() => {}); }
+  else pedirStats();
   DATA.estados.forEach(e => { if (e.ofKey) oficinas[e.ofKey] = e.ofNombre; });
   return `<div class="filtros">
       <input id="f-q" placeholder="Buscar obra, expediente, oficina o tipo" value="${esc(F.q)}">
@@ -267,6 +268,45 @@ function renderIndice() {
   enlazarFiltros(renderIndice);
   document.querySelectorAll('.idx-cab [data-col]').forEach(t => t.onclick = () => { if (IDX.orden === t.dataset.col) IDX.asc = !IDX.asc; else { IDX.orden = t.dataset.col; IDX.asc = t.dataset.col !== 'monto'; } renderIndice(); });
   document.querySelectorAll('.idx-fila').forEach(el => el.onclick = () => ficha(el.dataset.exp));
+}
+
+// Si faltan las estadísticas (traen la ruta y las oficinas) se piden una vez y se redibuja la vista actual.
+function pedirStats() {
+  if (pedirStats.pidiendo) return; pedirStats.pidiendo = true;
+  api('estadisticas').then(s => { guardarStats(s); if (!EN_FICHA && VISTA !== 'tablero') render(); }).catch(() => {});
+}
+
+// Dónde están: una línea de arriba (inicio) a abajo (Tesorería) con las oficinas en el orden de la ruta de cobro.
+// Cada expediente es una ficha en su oficina; los enviados que la oficina todavía no recibió van sobre la línea, "en camino".
+function renderMapa() {
+  if (!STATS) pedirStats();
+  const act = DATA.estados.filter(e => e.oficina_actual);
+  const ruta = ((STATS && STATS.rutas) || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
+  const paradas = [], vistas = {};
+  ruta.forEach(r => { const k = normOf(r.oficina); if (k && !vistas[k]) { vistas[k] = 1; paradas.push({ k, nombre: bonitoOf(r.oficina), etapa: r.etapa }); } });
+  // Oficinas con expedientes que no están en la ruta: al final, aparte.
+  const fuera = [];
+  act.forEach(e => { if (!vistas[e.ofKey]) { vistas[e.ofKey] = 1; fuera.push({ k: e.ofKey, nombre: e.ofNombre, fuera: true }); } });
+  const ficha1 = e => `<button class="mp-exp ${semaforo(e)}" data-exp="${esc(e.expediente)}" title="${esc(e.nombre_obra)}"><span class="exp">${esc(e.expediente)}</span><small>${n(e.dias_quieto)} d · ${pesos(e.monto)}</small></button>`;
+  const orden = (a, b) => Number(b.dias_quieto) - Number(a.dias_quieto);
+  const parada = p => {
+    const aca = act.filter(e => e.ofKey === p.k);
+    const llegando = aca.filter(sinRecibir).sort(orden), adentro = aca.filter(e => !sinRecibir(e)).sort(orden);
+    const monto = aca.reduce((s, e) => s + Number(e.monto || 0), 0);
+    return (llegando.length ? `<div class="mp-camino"><span class="mp-txt">en camino a ${esc(p.nombre)}</span><div class="mp-exps">${llegando.map(ficha1).join('')}</div></div>` : '') +
+      `<div class="mp-parada${aca.length ? '' : ' vacia'}${p.fuera ? ' fuera' : ''}"><span class="mp-punto"></span>
+        <div class="mp-cab"><b>${esc(p.nombre)}</b>${aca.length ? ` <small>${aca.length} exp. · ${pesos(monto)}</small>` : ''}</div>
+        ${adentro.length ? `<div class="mp-exps">${adentro.map(ficha1).join('')}</div>` : ''}</div>`;
+  };
+  $('#vista').innerHTML = `<div class="card mapa">
+      <h2>Dónde está cada expediente</h2>
+      <p><small>De arriba hacia abajo, el camino que hace un expediente hasta cobrarse. Cada ficha es un expediente (número, días hábiles en esa oficina y monto). Tocala para ver el detalle.</small></p>
+      <p class="mp-ley"><span class="chip teal">al día</span> <span class="chip ambar">quieto más de ${n(DATA.umbral)} días</span> <span class="mp-ley-camino">entre oficinas = enviado, todavía no lo recibieron</span></p>
+      ${STATS ? '' : '<p class="vacio">Cargando la ruta…</p>'}
+      <div class="mp-linea">${paradas.map(parada).join('')}<div class="mp-parada fin"><span class="mp-punto"></span><div class="mp-cab"><b>✔ Cobrado</b></div></div></div>
+      ${fuera.length ? `<h2 style="margin-top:20px">Fuera del camino habitual</h2><div class="mp-linea">${fuera.map(parada).join('')}</div>` : ''}
+    </div>`;
+  document.querySelectorAll('.mp-exp').forEach(b => b.onclick = () => ficha(b.dataset.exp));
 }
 
 // Pases seguidos dentro de la misma oficina (de un escritorio a otro) se muestran como un solo paso del recorrido.
