@@ -233,3 +233,18 @@ table.tabla td .exp { font-size: 17px; }
 .lm-q, .lm-c { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; background: var(--ambar); }
 .lm-c { background: none; border: 2px dashed var(--azul-claro); }
 .lm-camino::before { content: ""; position: absolute; z-index: -1; top: 8px; left: -4px; right: -4px; height: 4px; background: var(--azul-claro); }
+/* Celular: la línea chica va vertical y compacta, sin deslizar de costado */
+@media (max-width: 600px) {
+  .lm-linea { flex-direction: column; overflow: visible; padding: 4px 0 0; }
+  .lm-est { flex: none; min-width: 0; width: 100%; flex-direction: row; align-items: center; gap: 12px; min-height: 40px; }
+  .lm-est::before { top: 0; bottom: 0; left: 17px; right: auto; width: 4px; height: auto; }
+  .lm-est:first-child::before { left: 17px; top: 50%; }
+  .lm-est.fin::before { right: auto; bottom: 50%; }
+  .lm-bola { width: 38px; height: 38px; flex: none; }
+  .lm-est.vacia { min-height: 30px; }
+  .lm-est.vacia .lm-bola { margin: 0 10px; }
+  .lm-nom { max-width: none; text-align: left; font-size: 16px; }
+  .lm-camino { margin: 0 0 0 7px; align-self: flex-start; overflow: visible; }
+  .lm-camino::before { top: -4px; bottom: -4px; left: 8px; right: auto; width: 4px; height: auto; }
+  .lm-camino::after { content: attr(title); position: absolute; left: 34px; top: 3px; font-size: 13px; font-weight: 400; font-style: italic; color: var(--texto-2); white-space: nowrap; }
+}
