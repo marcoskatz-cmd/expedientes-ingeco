@@ -1,8 +1,8 @@
 // Service worker: guarda los archivos del sistema para que abra al instante y funcione aunque la señal sea mala.
 // Estrategia: devuelve lo guardado y, en paralelo, baja la versión nueva para la próxima vez.
 // Las llamadas a la API (script.google.com) no se guardan acá: eso lo maneja la app con localStorage.
-const CACHE = 'expedientes-v24';
-const ARCHIVOS = ['./', 'index.html', 'app.js?v=24', 'estilos.css?v=24', 'ayuda.html', 'manifest.webmanifest', 'icono.svg', 'logo.png'];
+const CACHE = 'expedientes-v25';
+const ARCHIVOS = ['./', 'index.html', 'app.js?v=25', 'estilos.css?v=25', 'ayuda.html', 'manifest.webmanifest', 'icono.svg', 'logo.png'];
 // Estilo común de la App INGECO: red primero (siempre la última), caché solo sin señal.
 const COMUN = 'https://app.ingecosa.com.ar/ingeco.';
 

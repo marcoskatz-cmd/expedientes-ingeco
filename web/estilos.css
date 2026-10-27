@@ -212,3 +212,24 @@ table.tabla td .exp { font-size: 17px; }
 .mp-camino { margin-left: 10px; padding: 6px 0 14px 34px; border-left: 4px dashed var(--linea-fuerte); }
 .mp-camino .mp-txt { font-size: 14px; color: var(--texto-2); font-style: italic; }
 .mp-camino .mp-exp { border-style: dashed; background: var(--superficie); }
+/* Línea chica del tablero */
+.lm { margin-top: 16px; padding-bottom: 10px; }
+.lm-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lm-link { background: none; border: 0; color: var(--azul-claro); font: inherit; font-size: 15px; cursor: pointer; min-height: 40px; }
+.lm-linea { display: flex; align-items: flex-start; overflow-x: auto; padding: 8px 2px 4px; position: relative; }
+.lm-est { flex: 1 1 0; min-width: 78px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; position: relative; }
+.lm-est::before { content: ''; position: absolute; top: 17px; left: 0; right: 0; height: 4px; background: var(--azul-claro); z-index: 0; }
+.lm-est:first-child::before { left: 50%; }
+.lm-est.fin::before { right: 50%; }
+.lm-est[disabled] { cursor: default; }
+.lm-bola { position: relative; z-index: 1; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--azul-claro); color: #fff; font-weight: 700; font-size: 18px; border: 3px solid var(--superficie); }
+.lm-est.vacia .lm-bola { width: 18px; height: 18px; margin: 10px 0; background: var(--superficie); border: 3px solid var(--linea-fuerte); }
+.lm-est.ambar .lm-bola { background: var(--ambar); }
+.lm-est.fin .lm-bola { background: var(--teal); }
+.lm-nom { font-size: 13px; line-height: 1.2; color: var(--texto-2); text-align: center; max-width: 96px; }
+.lm-est:not(.vacia) .lm-nom { color: var(--texto); font-weight: 600; }
+.lm-camino { flex: 0 0 auto; align-self: flex-start; margin-top: 7px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--azul); background: var(--superficie); border: 2px dashed var(--azul-claro); position: relative; z-index: 1; }
+.lm-ley { margin: 6px 0 0; }
+.lm-q, .lm-c { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; background: var(--ambar); }
+.lm-c { background: none; border: 2px dashed var(--azul-claro); }
+.lm-camino::before { content: ""; position: absolute; z-index: -1; top: 8px; left: -4px; right: -4px; height: 4px; background: var(--azul-claro); }
