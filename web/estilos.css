@@ -248,3 +248,14 @@ table.tabla td .exp { font-size: 17px; }
   .lm-camino::before { top: -4px; bottom: -4px; left: 8px; right: auto; width: 4px; height: auto; }
   .lm-camino::after { content: attr(title); position: absolute; left: 34px; top: 3px; font-size: 13px; font-weight: 400; font-style: italic; color: var(--texto-2); white-space: nowrap; }
 }
+/* "En camino": número más grande y con fondo, para que se lea */
+.lm-camino { width: 32px; height: 32px; margin-top: 3px; font-size: 17px; font-weight: 800; color: var(--tinta); background: var(--azul-suave); border: 3px dashed var(--azul); }
+@media (max-width: 600px) {
+  .lm-camino { margin: 2px 0 2px 3px; }
+  .lm-camino::before { left: 11px; }
+  .lm-camino::after { left: 44px; top: 4px; font-size: 15px; color: var(--texto); }
+}
+/* El círculo va en <b>, por encima de la línea (el ::before) */
+.lm-camino { background: none; border: 0; }
+.lm-camino b { position: relative; z-index: 2; width: 32px; height: 32px; box-sizing: border-box; border-radius: 50%; display: grid; place-items: center; background: var(--azul-suave); border: 3px dashed var(--azul); color: var(--tinta); }
+.lm-camino::before { z-index: 0; }
