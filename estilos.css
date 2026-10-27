@@ -189,3 +189,26 @@ table.tabla td .exp { font-size: 17px; }
   .tile b { white-space: normal; font-size: 22px; line-height: 1.1; overflow-wrap: anywhere; }
 }
 .tiempo small.internos { display: block; color: var(--gris); font-size: 14px; margin-top: 2px; }
+/* Dónde están: línea vertical de oficinas con los expedientes como fichas */
+.mp-ley { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mp-ley-camino { font-size: 14px; color: var(--texto-2); border-left: 3px dashed var(--linea-fuerte); padding-left: 8px; }
+.mp-linea { position: relative; margin-top: 12px; }
+.mp-parada { position: relative; padding: 4px 0 18px 34px; border-left: 4px solid var(--azul-claro); margin-left: 10px; }
+.mp-parada.vacia { border-left-color: var(--linea-fuerte); }
+.mp-parada.fin { border-left-color: transparent; padding-bottom: 0; }
+.mp-parada.fuera { border-left-style: dotted; }
+.mp-punto { position: absolute; left: -13px; top: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--superficie); border: 4px solid var(--azul-claro); }
+.mp-parada.vacia .mp-punto { border-color: var(--linea-fuerte); }
+.mp-parada.fin .mp-punto { background: var(--teal); border-color: var(--teal); }
+.mp-cab { font-size: 18px; min-height: 26px; }
+.mp-parada.vacia .mp-cab b { color: var(--texto-3); font-weight: 500; }
+.mp-cab small { color: var(--texto-2); }
+.mp-exps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.mp-exp { display: flex; flex-direction: column; align-items: flex-start; min-height: 48px; padding: 6px 12px; border-radius: 10px; border: 2px solid var(--teal); background: var(--teal-suave); cursor: pointer; font: inherit; text-align: left; }
+.mp-exp .exp { font-size: 18px; font-weight: 700; color: var(--teal); }
+.mp-exp small { font-size: 13px; color: var(--texto-2); }
+.mp-exp.ambar { border-color: var(--ambar); background: var(--ambar-suave); }
+.mp-exp.ambar .exp { color: var(--ambar-texto); }
+.mp-camino { margin-left: 10px; padding: 6px 0 14px 34px; border-left: 4px dashed var(--linea-fuerte); }
+.mp-camino .mp-txt { font-size: 14px; color: var(--texto-2); font-style: italic; }
+.mp-camino .mp-exp { border-style: dashed; background: var(--superficie); }
