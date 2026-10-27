@@ -143,6 +143,7 @@ function renderTablero() {
       <div class="tile click teal" data-ir='{"etapa":"Cobro"}'><small>En Tesorería (por cobrar)</small><b>${enCobro.length}</b><span>${pesos(enCobro.reduce((s, e) => s + Number(e.monto), 0))}</span></div>
       ${sinDato.length ? `<div class="tile"><small>Sin dato del municipio</small><b>${sinDato.length}</b><span>no encontrados o con error</span></div>` : ''}
     </section>
+    ${lineaMini(act)}
     <div class="uno">
       <div class="card"><h2>Últimos movimientos</h2><p><small>Los pases que detectó el sistema, del más reciente al más viejo.</small></p>${ultimosMovimientosHtml(DATA.ultimos_movimientos || [])}</div>
       <div class="card"><h2>Por oficina</h2><p><small>Tocá una oficina para ver sus expedientes.</small></p>${porOficinaDesplegable(act, porOficina, total)}</div>
@@ -153,6 +154,30 @@ function renderTablero() {
   document.querySelectorAll('.of-cab').forEach(c => c.onclick = () => { const d = c.nextElementSibling; d.hidden = !d.hidden; c.classList.toggle('abierto', !d.hidden); });
   document.querySelectorAll('.of-det li').forEach(li => li.onclick = ev => { ev.stopPropagation(); ficha(li.dataset.exp); });
   document.querySelectorAll('.movs li').forEach(li => li.onclick = () => ficha(li.dataset.exp));
+  document.querySelectorAll('.lm-est[data-of]').forEach(b => b.onclick = () => irALista({ oficina: b.dataset.of }));
+  const lm = $('#lm-ver'); if (lm) lm.onclick = () => activar('mapa');
+}
+
+// Línea chica del tablero: las oficinas del camino de cobro como estaciones, con cuántos expedientes hay en cada una.
+// Los enviados que todavía no recibieron se ven como un punto con borde punteado antes de la estación.
+const cortoOf = t => t.replace(/^(Dirección|Secretaría|Subsecretaría) (General )?(de |del )?/i, '').replace(/^Municipal /, '');
+function lineaMini(act) {
+  if (!STATS) { pedirStats(); return ''; }
+  const ruta = (STATS.rutas || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
+  const vistas = {}, paradas = [];
+  ruta.forEach(r => { const k = normOf(r.oficina); if (k && !vistas[k]) { vistas[k] = 1; paradas.push({ k, nombre: bonitoOf(r.oficina) }); } });
+  if (!paradas.length) return '';
+  const fuera = act.filter(e => !vistas[e.ofKey]).length;
+  const est = p => {
+    const aca = act.filter(e => e.ofKey === p.k), camino = aca.filter(sinRecibir).length, n0 = aca.length - camino;
+    const quieto = aca.some(e => !sinRecibir(e) && Number(e.dias_quieto) > DATA.umbral);
+    return `${camino ? `<span class="lm-camino" title="${camino} en camino a ${esc(p.nombre)}">${camino}</span>` : ''}
+      <button class="lm-est${n0 ? '' : ' vacia'}${quieto ? ' ambar' : ''}" ${aca.length ? `data-of="${esc(p.k)}"` : 'disabled'} title="${esc(p.nombre)}: ${aca.length} expedientes">
+        <span class="lm-bola">${n0 || ''}</span><span class="lm-nom">${esc(cortoOf(p.nombre))}</span></button>`;
+  };
+  return `<div class="card lm"><div class="lm-cab"><h2>Dónde están</h2><button class="lm-link" id="lm-ver">Ver cada expediente →</button></div>
+    <div class="lm-linea">${paradas.map(est).join('')}<span class="lm-est fin"><span class="lm-bola">✔</span><span class="lm-nom">Cobrado</span></span></div>
+    <p class="lm-ley"><small>Número = expedientes en esa oficina · <span class="lm-q"></span> alguno quieto más de ${n(DATA.umbral)} días · <span class="lm-c"></span> enviados, sin recibir${fuera ? ' · ' + fuera + ' fuera del camino habitual' : ''}</small></p></div>`;
 }
 
 function ultimosMovimientosHtml(movs) {
@@ -273,7 +298,7 @@ function renderIndice() {
 // Si faltan las estadísticas (traen la ruta y las oficinas) se piden una vez y se redibuja la vista actual.
 function pedirStats() {
   if (pedirStats.pidiendo) return; pedirStats.pidiendo = true;
-  api('estadisticas').then(s => { guardarStats(s); if (!EN_FICHA && VISTA !== 'tablero') render(); }).catch(() => {});
+  api('estadisticas').then(s => { guardarStats(s); if (!EN_FICHA) render(); }).catch(() => {});
 }
 
 // Dónde están: una línea de arriba (inicio) a abajo (Tesorería) con las oficinas en el orden de la ruta de cobro.
@@ -441,7 +466,7 @@ if (!window.INGECO_USUARIO && !DEV) sinAcceso();
 else {
   mostrarCacheSiHay();
   // Las estadísticas se traen por detrás apenas carga, así la pestaña abre al instante.
-  cargar().then(() => api('estadisticas').then(x => { guardarStats(x); }).catch(() => { }));
+  cargar().then(() => api('estadisticas').then(x => { const habia = STATS; guardarStats(x); if (!habia) render(); }).catch(() => { }));
   setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 5 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cargar(); });
 }
