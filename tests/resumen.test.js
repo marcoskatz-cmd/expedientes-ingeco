@@ -12,16 +12,20 @@ const movs = [
   { expediente: '200/2026', oficina: 'FISCALIA MUNICIPAL', detectado_en: '18/10/2026', dias_en_oficina_anterior: 2 },
   { expediente: '400/2026', oficina: 'COBRADO', detectado_en: '19/10/2026', dias_en_oficina_anterior: 1 }
 ];
-test('armarResumen: solo movimientos del día, situación por oficina y quietos', () => {
-  const r = R.armarResumen(estados, movs, '19/10/2026', 10);
+test('armarResumen: movimientos del día y lista completa de pendientes con próxima oficina', () => {
+  const sig = (e) => e.oficina_actual === 'CONTADURIA GENERAL' ? 'TESORERIA' : '';
+  const r = R.armarResumen(estados, movs, '19/10/2026', 10, sig);
   assert.strictEqual(r.cantMov, 2);
   assert.match(r.asunto, /2 movimiento/);
   assert.match(r.texto, /100\/2026 Bacheo Norte: Pasó a CONTADURIA GENERAL \(4 días/);
   assert.match(r.texto, /400\/2026 : Cobrado/);
-  assert.match(r.texto, /3 expedientes a cobrar/);
-  assert.match(r.texto, /Sin dato del municipio: 1/);
-  assert.match(r.texto, /QUIETOS MÁS DE 10 DÍAS HÁBILES \(1\)/);
+  assert.match(r.texto, /3 expedientes pendientes/);
+  assert.match(r.texto, /1 quietos más de 10/);
+  assert.match(r.texto, /PENDIENTES \(3\)\n• 200\/2026 Calle <Sur>: FISCALIA MUNICIPAL, 15 días \(QUIETO\) → —/);
+  assert.match(r.texto, /100\/2026 Bacheo Norte: CONTADURIA GENERAL, 3 días → TESORERIA/);
+  assert.match(r.texto, /300\/2026 Sin dato: Sin dato del municipio\n/);
   assert.ok(r.html.includes('Calle &lt;Sur&gt;'));
+  assert.ok(r.html.includes('Próxima oficina'));
 });
 test('armarResumen: día sin movimientos igual arma el mail', () => {
   const r = R.armarResumen(estados, movs, '20/10/2026', 10);

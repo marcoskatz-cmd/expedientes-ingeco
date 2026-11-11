@@ -16,9 +16,11 @@ dónde está cada uno, su recorrido entre oficinas y una proyección de cuándo 
 3. Si la oficina o la fecha de pase cambió (el municipio a veces no informa fecha: entonces vale la fecha de detección), guarda un movimiento en MOVIMIENTOS y actualiza Oficina / Ultimo Movimiento en el maestro.
 4. Recalcula la mediana de días hábiles por oficina y la proyección de días restantes (ruta esperada por tipo de contrato, hoja RUTAS).
 5. Si un expediente supera `umbral_dias_quieto` (CONFIG, default 10 días hábiles) manda mail a `mails_alerta` y un aviso por app-ingeco.
-6. De lunes a viernes a las 18 h manda un mail de resumen: movimientos del día, expedientes por oficina con montos y los quietos
-   más del umbral. Va a Julia Katz (juliakatz@grupoingeco.com.ar, `CFG.MAILS_RESUMEN_DEFAULT`); `mails_resumen` en CONFIG (separados por coma) la reemplaza.
-   Se prueba con `enviarResumenAhora()` o la acción `setup_resumen`.
+6. De lunes a viernes a las 18 h manda un mail de resumen en una carilla: totales, movimientos del día y la lista completa de
+   expedientes pendientes con la oficina donde están, días hábiles ahí, la próxima oficina según la ruta (hoja RUTAS) y el monto;
+   los quietos más del umbral van con fondo ámbar. Va a Julia Katz por defecto (`CFG.MAILS_RESUMEN_DEFAULT`).
+   **Para cambiar quién lo recibe:** planilla "Expedientes INGECO - Datos", hoja CONFIG, fila `mails_resumen`: mails separados por coma
+   (la fila se crea sola en el primer envío). Se prueba con `enviarResumenAhora()` o la acción `setup_resumen`.
 
 ## Script Properties (editor de Apps Script → Configuración del proyecto)
 
