@@ -170,7 +170,7 @@ function lineaMini(act) {
     const aca = act.filter(e => pasoDe(e, paradas) === p), camino = aca.filter(sinRecibir).length, n0 = aca.length - camino;
     const quieto = aca.some(e => !sinRecibir(e) && Number(e.dias_quieto) > DATA.umbral);
     const nom = p.nombre + (p.veces > 1 ? ' (' + vezTxt(p) + ')' : '');
-    return `${camino ? `<span class="lm-camino" title="${camino} en camino a ${esc(nom)}"><b>${camino}</b></span>` : ''}
+    return `${camino ? `<span class="lm-camino" title="${camino} en camino a ${esc(cortoOf(p.nombre))}"><b>${camino}</b></span>` : ''}
       <button class="lm-est${n0 ? '' : ' vacia'}${quieto ? ' ambar' : ''}" ${aca.length ? `data-of="${esc(p.k)}"` : 'disabled'} title="${esc(nom)}: ${aca.length} expedientes">
         <span class="lm-bola">${n0 || ''}</span><span class="lm-nom">${esc(cortoOf(p.nombre))}${p.veces > 1 ? '<small class="lm-vez">' + vezTxt(p) + '</small>' : ''}</span></button>`;
   };
