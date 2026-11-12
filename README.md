@@ -38,8 +38,10 @@ correr desde el editor o por `doPost` con las acciones `setup_*` de `Setup.js`, 
 (`setup_importar`, `setup_correr`, `setup_trigger`, `setup_resumen`, `setup_log`, `setup_hoja`, `setup_probar`, `setup_rutas`, `setup_reset_alertas`,
 `setup_prop`, `setup_config`). Con `SETUP_SECRET` vacía quedan deshabilitadas.
 
-La hoja RUTAS tiene una ruta general de cobro (`tipo_contrato` = `*`) derivada de la trazabilidad histórica; se puede editar o
-agregar rutas por tipo de contrato. La hoja "Ruta contratos" del maestro describe la contratación, no el cobro, y no se usa.
+La hoja RUTAS tiene el circuito de cobro (`tipo_contrato` = `*`), derivado de la trazabilidad: 13 pasos con oficinas repetidas (no es lineal).
+El bot ubica cada expediente en un paso leyendo toda su historia (`ubicar` en Proyeccion.js) y mide la mediana por paso.
+Certificados y fondos de reparo (por nombre) entran en el primer paso de etapa "Final". Se carga con la acción `setup_rutas` y se puede editar en la hoja.
+La hoja "Ruta contratos" del maestro describe la contratación, no el cobro, y no se usa.
 
 ## Deploy
 

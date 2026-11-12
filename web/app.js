@@ -160,24 +160,39 @@ function renderTablero() {
 
 // Línea chica del tablero: las oficinas del camino de cobro como estaciones, con cuántos expedientes hay en cada una.
 // Los enviados que todavía no recibieron se ven como un punto con borde punteado antes de la estación.
-const cortoOf = t => t.replace(/^(Dirección|Secretaría|Subsecretaría) (General )?(de |del )?/i, '').replace(/^Municipal /, '');
+const cortoOf = t => t.replace(/^(Dirección|Secretaría|Subsecretaría) (General )?(de |del )?/i, '').replace(/^Municipal /, '').replace(/^Planeamiento y Presupuesto$/, 'Presupuesto').replace(/^Economía y Hacienda$/, 'Economía');
 function lineaMini(act) {
   if (!STATS) { pedirStats(); return ''; }
-  const ruta = (STATS.rutas || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
-  const vistas = {}, paradas = [];
-  ruta.forEach(r => { const k = normOf(r.oficina); if (k && !vistas[k]) { vistas[k] = 1; paradas.push({ k, nombre: bonitoOf(r.oficina) }); } });
+  const paradas = pasosCircuito();
   if (!paradas.length) return '';
-  const fuera = act.filter(e => !vistas[e.ofKey]).length;
+  const fuera = act.filter(e => !pasoDe(e, paradas)).length;
   const est = p => {
-    const aca = act.filter(e => e.ofKey === p.k), camino = aca.filter(sinRecibir).length, n0 = aca.length - camino;
+    const aca = act.filter(e => pasoDe(e, paradas) === p), camino = aca.filter(sinRecibir).length, n0 = aca.length - camino;
     const quieto = aca.some(e => !sinRecibir(e) && Number(e.dias_quieto) > DATA.umbral);
-    return `${camino ? `<span class="lm-camino" title="${camino} en camino a ${esc(p.nombre)}"><b>${camino}</b></span>` : ''}
-      <button class="lm-est${n0 ? '' : ' vacia'}${quieto ? ' ambar' : ''}" ${aca.length ? `data-of="${esc(p.k)}"` : 'disabled'} title="${esc(p.nombre)}: ${aca.length} expedientes">
-        <span class="lm-bola">${n0 || ''}</span><span class="lm-nom">${esc(cortoOf(p.nombre))}</span></button>`;
+    const nom = p.nombre + (p.veces > 1 ? ' (' + vezTxt(p) + ')' : '');
+    return `${camino ? `<span class="lm-camino" title="${camino} en camino a ${esc(nom)}"><b>${camino}</b></span>` : ''}
+      <button class="lm-est${n0 ? '' : ' vacia'}${quieto ? ' ambar' : ''}" ${aca.length ? `data-of="${esc(p.k)}"` : 'disabled'} title="${esc(nom)}: ${aca.length} expedientes">
+        <span class="lm-bola">${n0 || ''}</span><span class="lm-nom">${esc(cortoOf(p.nombre))}${p.veces > 1 ? '<small class="lm-vez">' + vezTxt(p) + '</small>' : ''}</span></button>`;
   };
   return `<div class="card lm"><div class="lm-cab"><h2>Dónde están</h2><button class="lm-link" id="lm-ver">Ver cada expediente →</button></div>
     <div class="lm-linea">${paradas.map(est).join('')}<span class="lm-est fin"><span class="lm-bola">✔</span><span class="lm-nom">Cobrado</span></span></div>
-    <p class="lm-ley"><small>Número = expedientes en esa oficina · <span class="lm-q"></span> alguno quieto más de ${n(DATA.umbral)} días · <span class="lm-c"></span> enviados, sin recibir${fuera ? ' · ' + fuera + ' fuera del camino habitual' : ''}</small></p></div>`;
+    <p class="lm-ley"><small>El circuito pasa varias veces por algunas oficinas (1ª, 2ª, 3ª vez) · Número = expedientes en ese paso · <span class="lm-q"></span> alguno quieto más de ${n(DATA.umbral)} días · <span class="lm-c"></span> enviados, sin recibir${fuera ? ' · ' + fuera + ' fuera del camino habitual' : ''}</small></p></div>`;
+}
+
+// Pasos del circuito de cobro (hoja RUTAS) en orden. No es lineal: una misma oficina aparece varias veces,
+// así que cada paso lleva qué vez es (vez) y cuántas veces aparece esa oficina en total (veces).
+function pasosCircuito() {
+  const ruta = ((STATS && STATS.rutas) || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
+  const cuenta = {};
+  const pasos = ruta.map((r, i) => { const k = normOf(r.oficina); cuenta[k] = (cuenta[k] || 0) + 1; return { i, k, nombre: bonitoOf(r.oficina), etapa: r.etapa, vez: cuenta[k], r }; });
+  pasos.forEach(p => { p.veces = cuenta[p.k]; });
+  return pasos;
+}
+const vezTxt = p => (['', '1ª', '2ª', '3ª', '4ª', '5ª'][p.vez] || p.vez + 'ª') + ' vez';
+// Paso en el que está el expediente (lo calcula el bot leyendo su historia); si no coincide con la oficina, queda afuera.
+function pasoDe(e, pasos) {
+  const p = pasos[Number(e.paso_en_ruta) - 1];
+  return p && p.k === e.ofKey ? p : null;
 }
 
 function ultimosMovimientosHtml(movs) {
@@ -306,26 +321,28 @@ function pedirStats() {
 function renderMapa() {
   if (!STATS) pedirStats();
   const act = DATA.estados.filter(e => e.oficina_actual);
-  const ruta = ((STATS && STATS.rutas) || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
-  const paradas = [], vistas = {};
-  ruta.forEach(r => { const k = normOf(r.oficina); if (k && !vistas[k]) { vistas[k] = 1; paradas.push({ k, nombre: bonitoOf(r.oficina), etapa: r.etapa }); } });
-  // Oficinas con expedientes que no están en la ruta: al final, aparte.
-  const fuera = [];
-  act.forEach(e => { if (!vistas[e.ofKey]) { vistas[e.ofKey] = 1; fuera.push({ k: e.ofKey, nombre: e.ofNombre, fuera: true }); } });
+  const paradas = pasosCircuito();
+  // Expedientes que no están en un paso del circuito: al final, aparte, agrupados por oficina.
+  const fuera = [], vistas = {};
+  act.forEach(e => { if (!pasoDe(e, paradas) && !vistas[e.ofKey]) { vistas[e.ofKey] = 1; fuera.push({ k: e.ofKey, nombre: e.ofNombre, fuera: true }); } });
   const ficha1 = e => `<button class="mp-exp ${semaforo(e)}" data-exp="${esc(e.expediente)}" title="${esc(e.nombre_obra)}"><span class="exp">${esc(e.expediente)}</span><small>${n(e.dias_quieto)} d · ${pesos(e.monto)}</small></button>`;
   const orden = (a, b) => Number(b.dias_quieto) - Number(a.dias_quieto);
+  const iniCert = Number((STATS && STATS.inicio_certificados) ?? -1);
   const parada = p => {
-    const aca = act.filter(e => e.ofKey === p.k);
+    const aca = act.filter(e => p.fuera ? (!pasoDe(e, paradas) && e.ofKey === p.k) : pasoDe(e, paradas) === p);
     const llegando = aca.filter(sinRecibir).sort(orden), adentro = aca.filter(e => !sinRecibir(e)).sort(orden);
     const monto = aca.reduce((s, e) => s + Number(e.monto || 0), 0);
-    return (llegando.length ? `<div class="mp-camino"><span class="mp-txt">en camino a ${esc(p.nombre)}</span><div class="mp-exps">${llegando.map(ficha1).join('')}</div></div>` : '') +
+    const nom = p.nombre + (p.veces > 1 ? ' <small class="mp-vez">' + vezTxt(p) + '</small>' : '');
+    const etapa = !p.fuera && (p.i === 0 || paradas[p.i - 1].etapa !== p.etapa) ? `<div class="mp-etapa">Etapa ${esc(p.etapa)}</div>` : '';
+    const cert = !p.fuera && p.i === iniCert ? '<div class="mp-cert">Acá entran directo los certificados y fondos de reparo</div>' : '';
+    return etapa + cert + (llegando.length ? `<div class="mp-camino"><span class="mp-txt">en camino a ${esc(p.nombre)}</span><div class="mp-exps">${llegando.map(ficha1).join('')}</div></div>` : '') +
       `<div class="mp-parada${aca.length ? '' : ' vacia'}${p.fuera ? ' fuera' : ''}"><span class="mp-punto"></span>
-        <div class="mp-cab"><b>${esc(p.nombre)}</b>${aca.length ? ` <small>${aca.length} exp. · ${pesos(monto)}</small>` : ''}</div>
+        <div class="mp-cab"><b>${p.fuera ? '' : '<span class="mp-n">' + (p.i + 1) + '.</span> '}${nom}</b>${aca.length ? ` <small>${aca.length} exp. · ${pesos(monto)}</small>` : ''}</div>
         ${adentro.length ? `<div class="mp-exps">${adentro.map(ficha1).join('')}</div>` : ''}</div>`;
   };
   $('#vista').innerHTML = `<div class="card mapa">
       <h2>Dónde está cada expediente</h2>
-      <p><small>De arriba hacia abajo, el camino que hace un expediente hasta cobrarse. Cada ficha es un expediente (número, días hábiles en esa oficina y monto). Tocala para ver el detalle.</small></p>
+      <p><small>De arriba hacia abajo, el camino que hace un expediente hasta cobrarse. No es una línea recta: pasa varias veces por Obras Públicas, Obras Viales y Contaduría, y cada pasada es un paso distinto. Cada ficha es un expediente (número, días hábiles en esa oficina y monto). Tocala para ver el detalle.</small></p>
       <p class="mp-ley"><span class="chip teal">al día</span> <span class="chip ambar">quieto más de ${n(DATA.umbral)} días</span> <span class="mp-ley-camino">entre oficinas = enviado, todavía no lo recibieron</span></p>
       ${STATS ? '' : '<p class="vacio">Cargando la ruta…</p>'}
       <div class="mp-linea">${paradas.map(parada).join('')}<div class="mp-parada fin"><span class="mp-punto"></span><div class="mp-cab"><b>✔ Cobrado</b></div></div></div>
@@ -367,6 +384,18 @@ async function ficha(exp, sinHistorial) {
   } catch (e) { if (EN_FICHA === exp && !FICHAS[exp]) $('#vista').innerHTML = `<button class="volver" onclick="history.back()">← Volver</button><p class="vacio">${esc(e.message)}</p>`; }
 }
 
+// Etapa, paso del circuito (con qué vez pasa por esa oficina) y los pasos que le faltan hasta Tesorería.
+function etapaFicha(e) {
+  if (!STATS) pedirStats();
+  const pasos = pasosCircuito(), p = pasoDe(Object.assign({ ofKey: normOf(e.oficina_actual) }, e), pasos);
+  if (!p) return esc(e.etapa || '—');
+  const faltan = pasos.slice(p.i + 1).map(x => esc(cortoOf(x.nombre)));
+  const circ = e.circuito === 'Certificado' ? 'certificado / fondo de reparo: hace solo el tramo final' : (e.circuito ? 'trámite con decreto: pasa por Fiscalía y Gobierno' : '');
+  return `<b>${esc(e.etapa)}</b> · paso ${p.i + 1} de ${pasos.length}${p.veces > 1 ? ` · <b>${vezTxt(p)}</b> en ${esc(p.nombre)}` : ''}` +
+    (circ ? `<br><small>Circuito: ${circ}</small>` : '') +
+    (faltan.length ? `<br><small>Le falta: ${faltan.join(' → ')}</small>` : '<br><small>Último paso: cuando Tesorería paga, se cobra.</small>');
+}
+
 function pintarFicha(f) {
   const e = Object.assign({}, f.estado);
   e.ofNombre = e.oficina_actual ? bonitoOf(e.oficina_actual) : '';
@@ -383,7 +412,7 @@ function pintarFicha(f) {
             <dt>Monto</dt><dd>${pesos(e.monto)}${!Number(e.monto) ? ' <small>(sin monto en la planilla)</small>' : ''}</dd>
             <dt>Tipo</dt><dd>${esc(e.tipo_contrato || '—')}</dd>
             <dt>Oficina actual</dt><dd class="estado ${sem}">${e.oficina_actual ? '<b>' + esc(e.ofNombre) + '</b> · ' + n(e.dias_quieto) + ' días hábiles<br>' + pasoHtml(llegadaActual(e, movs), oficinaAnterior(movs, e.oficina_actual), sinRecibir(e)) : 'Sin dato: ' + esc(e.error)}</dd>
-            <dt>Etapa</dt><dd>${esc(e.etapa || '—')}${e.paso_en_ruta ? ' <small>(paso ' + n(e.paso_en_ruta) + ' de la ruta)</small>' : ''}</dd>
+            <dt>Etapa</dt><dd>${etapaFicha(e)}</dd>
             <dt>Cobro estimado</dt><dd>${num(e.dias_restantes_est) != null ? '<b>' + n(e.fecha_cobro_est) + '</b> · faltan ~' + n(e.dias_restantes_est) + ' días hábiles' + (e.calidad_estimacion === 'debil' ? ' <span class="chip debil">estimación débil</span>' : '') : 'Sin proyección' + (e.etapa === 'Fuera de ruta' ? ': la oficina no está en la ruta de cobro' : '')}</dd>
             <dt>Última consulta</dt><dd>${DATA && DATA.ultima_corrida ? corridaTxt(DATA.ultima_corrida) : n(e.ultima_consulta)}</dd>
           </dl>
@@ -419,8 +448,9 @@ function pintarStats(s) {
   const statsOf = {}; s.oficinas.forEach(o => { statsOf[normOf(o.nombre_canonico)] = o; });
   const lleg = s.llegadas || {};
   const casosTxt = (key, casos) => { const l = lleg[key] || 0; return l > casos ? `${n(l)} pasaron · ${n(casos)} con salida medida` : (casos ? `${n(casos)} caso${casos === 1 ? '' : 's'}` : 'sin casos'); };
-  const ruta = (s.rutas || []).filter(r => String(r.tipo_contrato).trim() === '*').sort((a, b) => Number(a.orden) - Number(b.orden));
-  const pasos = ruta.map(r => { const key = normOf(r.oficina), st = statsOf[key]; const ok = st && Number(st.casos) >= (s.min_casos || 5); return { oficina: bonitoOf(r.oficina), key, etapa: r.etapa, dias: ok ? Number(st.mediana_dias) : Number(r.dias_default) || 0, casos: st ? Number(st.casos) : 0, debil: !ok }; });
+  // Cada paso trae del servidor los días que usa (mediana de ESE paso, o de la oficina, o el valor por defecto).
+  const pasos = pasosCircuito().map(p => { const r = p.r; return { oficina: bonitoOf(r.oficina) + (p.veces > 1 ? ' (' + vezTxt(p) + ')' : ''), key: p.k, etapa: r.etapa, dias: r.dias != null ? Number(r.dias) : Number(r.dias_default) || 0, casos: Number(r.casos) || 0, fuente: r.fuente, debil: r.debil != null ? !!r.debil : true }; });
+  const casosPaso = p => p.fuente === 'paso' ? `${n(p.casos)} casos` : p.fuente === 'oficina' ? `pocos casos de este paso (${n(p.casos)}): se usa la mediana de la oficina` : casosTxt(p.key, p.casos);
   const totalTipo = pasos.reduce((a, p) => a + p.dias, 0);
   const sinTeso = pasos.filter(p => p.etapa !== 'Cobro').reduce((a, p) => a + p.dias, 0);
   const tesoProv = pasos.some(p => p.etapa === 'Cobro' && p.debil);
@@ -428,12 +458,12 @@ function pintarStats(s) {
   const lineaHtml = pasos.length ? `
     <div class="linea">${pasos.map(p => `<div class="seg ${esc(p.etapa)}${p.debil ? ' debil' : ''}" style="flex:${Math.max(p.dias, 0.6)}" title="${esc(p.oficina)}: ${n(p.dias)} días hábiles${p.debil ? ' (provisorio)' : ''}">${p.dias >= 2 ? (p.debil ? '"' + n(p.dias) + ' d"' : n(p.dias) + ' d') : ''}</div>`).join('')}</div>
     <div class="leyenda"><span><i style="background:var(--seg-pre)"></i>Preliminar</span><span><i style="background:var(--seg-media)"></i>Media</span><span><i style="background:var(--seg-final)"></i>Final</span><span><i style="background:var(--seg-cobro)"></i>Cobro</span><span><i style="background:var(--texto-3);background-image:repeating-linear-gradient(45deg,transparent 0 3px,var(--superficie) 3px 5px)"></i>rayado y "entre comillas": dato provisorio, menos de ${n(s.min_casos || 5)} casos</span></div>
-    <ul class="pasos">${pasos.map((p, i) => { acumD += p.dias; return `<li><span class="n">${i + 1}.</span><span>${esc(p.oficina)} <small class="n">${esc(p.etapa)} · ${casosTxt(p.key, p.casos)}</small></span><span class="d">${p.debil ? '<b>"' + n(p.dias) + '"</b> d' : '<b>' + n(p.dias) + '</b> d'}</span><span class="acum">día ${n(acumD)}</span></li>`; }).join('')}</ul>
-    <p><small>Hasta llegar a Tesorería, un expediente tipo tarda <b>${n(sinTeso)} días hábiles</b> (unas ${n(Math.round(sinTeso / 5))} semanas); hasta cobrarse, ${tesoProv ? '"' + n(totalTipo) + '"' : n(totalTipo)}. Se puede editar la ruta en la hoja RUTAS de la planilla de datos.</small></p>
+    <ul class="pasos">${pasos.map((p, i) => { acumD += p.dias; return `<li><span class="n">${i + 1}.</span><span>${esc(p.oficina)} <small class="n">${esc(p.etapa)} · ${casosPaso(p)}</small></span><span class="d">${p.debil ? '<b>"' + n(p.dias) + '"</b> d' : '<b>' + n(p.dias) + '</b> d'}</span><span class="acum">día ${n(acumD)}</span></li>`; }).join('')}</ul>
+    <p><small>Hasta llegar a Tesorería, un expediente tipo tarda <b>${n(sinTeso)} días hábiles</b> (unas ${n(Math.round(sinTeso / 5))} semanas); hasta cobrarse, ${tesoProv ? '"' + n(totalTipo) + '"' : n(totalTipo)}. Trámite con decreto, el más largo; los certificados y fondos de reparo hacen solo los pasos ${n(Number(STATS.inicio_certificados ?? 10) + 1)} a ${n(pasos.length)}. Se puede editar el circuito en la hoja RUTAS de la planilla de datos.</small></p>
     ${pasos.some(p => p.etapa === 'Cobro' && p.debil) ? '<p><small><b>Tesorería va "entre comillas"</b>: por Tesorería pasaron ' + n(lleg['TESORERIA GENERAL'] || 0) + ' expedientes, pero la planilla casi nunca registró la fecha en que salieron (se cobraron), así que la duración solo se pudo medir en ' + n((statsOf['TESORERIA GENERAL'] || {}).casos || 0) + '. El bot la mide desde ahora cada vez que un expediente se marca como cobrado en OBRAS INGECO; cuando junte ' + n(s.min_casos || 5) + ' casos el dato pasa a ser firme.</small></p>' : ''}` : '<p class="vacio">No hay ruta cargada.</p>';
   $('#vista').innerHTML = `
     <section class="tiles">
-      <div class="tile"><small>Expediente tipo hasta llegar a Tesorería</small><b>${n(sinTeso)} días hábiles</b><span>sumando la mediana de cada oficina</span></div>
+      <div class="tile"><small>Expediente tipo hasta llegar a Tesorería</small><b>${n(sinTeso)} días hábiles</b><span>sumando la mediana de cada paso del circuito</span></div>
       <div class="tile"><small>Expediente tipo hasta cobrar</small><b>${tesoProv ? '"' + n(totalTipo) + '"' : n(totalTipo)} días hábiles</b><span>${tesoProv ? 'Tesorería provisoria: ' + n(totalTipo - sinTeso) + ' d entre comillas' : 'incluye Tesorería'}</span></div>
       <div class="tile"><small>Inicio → Tesorería (real, mediana)</small><b>${n(s.total.mediana)} días hábiles</b><span>${n(s.total.casos)} expedientes completos · p25 ${n(s.total.p25)} · p75 ${n(s.total.p75)}</span></div>
       <div class="tile"><small>Oficina más lenta (con datos firmes)</small><b>${firmes[0] ? esc(bonitoOf(firmes[0].nombre_canonico)) : '—'}</b><span>${firmes[0] ? n(firmes[0].mediana_dias) + ' días de mediana · ' + n(firmes[0].casos) + ' casos' : ''}</span></div>

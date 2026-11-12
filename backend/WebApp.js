@@ -89,7 +89,10 @@ function accionEstadisticas_() {
   });
   totales.sort(function (a, b) { return a - b; });
   var q = function (p) { return totales.length ? totales[Math.min(totales.length - 1, Math.floor(p * totales.length))] : 0; };
-  return { ok: true, oficinas: oficinas, llegadas: llegadasPorOficina(movs, mapaCanon_(ssD)), rutas: leerHoja_(ssD, 'RUTAS'), min_casos: CFG.MIN_CASOS_MEDIANA, total: { casos: totales.length, mediana: mediana(totales), p25: q(0.25), p75: q(0.75) } };
+  var mapa = mapaCanon_(ssD), rutas = leerHoja_(ssD, 'RUTAS');
+  // Cada paso del circuito con los días que se usan para proyectar (mediana del paso, de la oficina o por defecto).
+  var pasos = diasPorPaso(rutas, medianasPorPaso(movs, rutas, mapa), medianasPorOficina(movs, mapa), CFG.MIN_CASOS_MEDIANA, mapa);
+  return { ok: true, oficinas: oficinas, llegadas: llegadasPorOficina(movs, mapa), rutas: pasos, inicio_certificados: inicioCertificados(pasos), min_casos: CFG.MIN_CASOS_MEDIANA, total: { casos: totales.length, mediana: mediana(totales), p25: q(0.25), p75: q(0.75) } };
 }
 
 function accionGestion_(p, u) {

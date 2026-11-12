@@ -50,15 +50,22 @@ function accionSetupExtra_(accion, p) {
   return null;
 }
 
-// Ruta general de COBRO observada en los 588 movimientos importados (la hoja "Ruta contratos" describía la
-// contratación, no el cobro). tipo_contrato "*" = vale para todos los tipos. Editable en la hoja RUTAS.
+// Circuito de cobro observado en los ~600 movimientos (revisado el 12-nov-2026). NO es lineal: Obras Públicas,
+// Obras Viales y Contaduría aparecen varias veces. Presupuesto y Economía a veces van en el otro orden y el paso 10
+// (Obras Públicas después del decreto) a veces se saltea: el motor tolera saltos e idas y vueltas.
+// Certificados y fondos de reparo hacen solo el tramo "Final" + Tesorería. tipo_contrato "*" = vale para todos.
 var RUTA_COBRO_ = [
   ['DIRECCION DE OBRAS VIALES', 'Preliminar', 5],
   ['SECRETARIA DE OBRAS PUBLICAS', 'Preliminar', 2],
-  ['SECRETARIA DE ECONOMIA Y HACIENDA', 'Media', 1],
-  ['DIRECCION DE PLANEAMIENTO Y PRESUPUESTO', 'Media', 1],
-  ['SECRETARIA DE GOBIERNO', 'Media', 2],
+  ['DIRECCION DE PLANEAMIENTO Y PRESUPUESTO', 'Preliminar', 1],
+  ['SECRETARIA DE ECONOMIA Y HACIENDA', 'Preliminar', 1],
+  ['SECRETARIA DE OBRAS PUBLICAS', 'Preliminar', 2],
+  ['CONTADURIA GENERAL', 'Media', 2],
   ['FISCALIA MUNICIPAL', 'Media', 5],
+  ['SECRETARIA DE OBRAS PUBLICAS', 'Media', 2],
+  ['SECRETARIA DE GOBIERNO', 'Media', 2],
+  ['SECRETARIA DE OBRAS PUBLICAS', 'Media', 2],
+  ['DIRECCION DE OBRAS VIALES', 'Final', 5],
   ['CONTADURIA GENERAL', 'Final', 2],
   ['TESORERIA GENERAL', 'Cobro', 1]   // provisorio: según Marcos suele ser 1 día hábil; se mide desde ahora al cobrarse
 ];
