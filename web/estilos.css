@@ -267,3 +267,6 @@ table.tabla td .exp { font-size: 17px; }
 .mp-cert { margin: 0 0 6px 44px; font-size: 14px; font-style: italic; color: var(--teal); }
 @media (max-width: 600px) { .lm-vez { display: inline; margin-left: 6px; font-size: 14px; } }
 @media (min-width: 601px) { .lm-est { min-width: 52px; } .lm-nom { font-size: 12px; max-width: 74px; } .lm-bola { width: 34px; height: 34px; font-size: 16px; } .lm-est::before { top: 15px; } }
+/* Celular: la pantalla nunca se desliza de costado (dentro de la app INGECO el deslizamiento movía y achicaba todo). */
+html, body { overflow-x: hidden; overflow-x: clip; }
+@media (max-width: 600px) { .lm-camino::after { max-width: calc(100vw - 130px); overflow: hidden; text-overflow: ellipsis; } }
